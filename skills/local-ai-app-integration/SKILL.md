@@ -1,14 +1,13 @@
 ---
 name: local-ai-app-integration
 description: >-
-  Add a private, on-device AI mode to an existing cloud-AI app by bundling
-  Embeddable Lemonade (the `lemond` binary) as a subprocess and re-pointing the
-  app's existing OpenAI/Anthropic/Ollama-compatible client at it. Use when the
-  user wants to add local, offline, private, or on-device AI to an application;
-  ship an embedded LLM, image-gen, speech-to-text, or text-to-speech engine
-  with their app; replace or supplement a cloud OpenAI/Anthropic/Ollama
-  integration with a local backend; or mentions Lemonade, `lemond`, embeddable
-  lemonade, Ryzen AI, NPU/iGPU/dGPU inference, or auto-optimizing local AI.
+  Integrates local AI capabilities into applications using Embeddable Lemonade.
+  Use when the user wants to add local AI, offline AI, private AI, on-device AI,
+  a local LLM, local chat, embeddings, image generation, speech-to-text, or
+  text-to-speech to an app; replace or supplement OpenAI, Anthropic, Ollama, or
+  other cloud AI APIs with a local backend; bundle AI inference into an app
+  installer; or mentions Lemonade, `lemond`, embeddable lemonade, Ryzen AI,
+  NPU/iGPU/dGPU inference, or auto-optimizing local AI.
 ---
 
 # Local AI App Integration (Embeddable Lemonade)
