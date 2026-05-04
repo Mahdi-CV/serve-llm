@@ -189,7 +189,6 @@ Best for cross-cutting skills that do not have a natural product home.
    ```bash
    ./scripts/check.sh   # runs unit tests and validates every SKILL.md
    ```
-   Requires [`uv`](https://github.com/astral-sh/uv). The validator declares its own Python dependencies inline (PEP 723) so there is no `pip install` step.
 6. Open a pull request. The `validate` GitHub Actions workflow runs `./scripts/check.sh` and must pass before merge. See [AUTHORING.md](AUTHORING.md#validating-locally) for the full set of enforced rules.
 
 ### Path B — Skills authored in a product repository
