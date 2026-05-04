@@ -6,7 +6,11 @@
 ![ROCm](https://img.shields.io/badge/ROCm-Enabled-green)
 ![Ryzen AI](https://img.shields.io/badge/Ryzen_AI-Ready-1F6FEB)
 ![Agent Skills](https://img.shields.io/badge/Agent_Skills-Format-7B2D8E)
-![License](https://img.shields.io/badge/License-MIT-blue)
+[![Cursor](https://img.shields.io/badge/Cursor-Compatible-000000?logo=cursor&logoColor=white)](https://cursor.com)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-Compatible-D97757)](https://www.anthropic.com/claude-code)
+[![OpenAI Codex](https://img.shields.io/badge/OpenAI_Codex-Compatible-412991)](https://openai.com/codex/)
+[![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-Compatible-4285F4)](https://ai.google.dev/gemini-api/docs/cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Give your AI agents the power of AMD's optimized ecosystem.
 
