@@ -13,7 +13,6 @@ Design goals:
 - Reuse `.claude-plugin/plugin.json` as the primary metadata source.
 - Discover skills from `skills/*/SKILL.md` so the manifest tracks the
   catalog automatically.
-- Treat `.mcp.json` as hand-maintained (no MCP server is generated here).
 
 Usage:
     uv run scripts/generate_cursor_plugin.py            # write
@@ -32,7 +31,6 @@ ROOT = Path(__file__).resolve().parent.parent
 CLAUDE_PLUGIN_MANIFEST = ROOT / ".claude-plugin" / "plugin.json"
 CURSOR_PLUGIN_DIR = ROOT / ".cursor-plugin"
 CURSOR_PLUGIN_MANIFEST = CURSOR_PLUGIN_DIR / "plugin.json"
-MCP_CONFIG = ROOT / ".mcp.json"
 
 # Fields copied verbatim from the Claude plugin manifest into the Cursor
 # manifest so the two stay in lock-step.
@@ -107,9 +105,7 @@ def build_cursor_plugin_manifest() -> dict:
     if not skills:
         raise ValueError("No skills discovered under skills/*/SKILL.md")
 
-    # `mcpServers` points at .mcp.json so future MCP servers added there
-    # are picked up by Cursor without a manifest change.
-    manifest: dict = {"name": name, "skills": "skills", "mcpServers": ".mcp.json"}
+    manifest: dict = {"name": name, "skills": "skills"}
     for key in COPIED_FIELDS:
         if key in src:
             manifest[key] = src[key]
@@ -139,21 +135,6 @@ def write_or_check(path: Path, content: str, check: bool) -> bool:
     return True
 
 
-def validate_mcp_config() -> None:
-    """Make sure .mcp.json is at least valid JSON shaped like an MCP config."""
-    if not MCP_CONFIG.exists():
-        raise FileNotFoundError(
-            f"Missing required file: {MCP_CONFIG.relative_to(ROOT)}. "
-            'Create it with `{"mcpServers": {}}` if there are no servers yet.'
-        )
-    data = load_json(MCP_CONFIG)
-    if not isinstance(data, dict) or "mcpServers" not in data:
-        raise ValueError(
-            f"{MCP_CONFIG.relative_to(ROOT)} must be a JSON object with an "
-            "`mcpServers` key (use `{}` if no servers are configured)."
-        )
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate Cursor plugin manifest from .claude-plugin/plugin.json"
@@ -165,7 +146,6 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    validate_mcp_config()
     plugin_manifest = render_json(build_cursor_plugin_manifest())
     ok_plugin = write_or_check(CURSOR_PLUGIN_MANIFEST, plugin_manifest, check=args.check)
 

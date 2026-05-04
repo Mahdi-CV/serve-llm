@@ -1,7 +1,6 @@
 {
   "name": "amd-skills",
   "skills": "skills",
-  "mcpServers": ".mcp.json",
   "description": "Agent Skills for AMD-optimized workflows.",
   "version": "0.1.0",
   "author": {

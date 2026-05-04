@@ -10,7 +10,6 @@ on:
       - "skills/**"
       - ".claude-plugin/**"
       - ".cursor-plugin/**"
-      - ".mcp.json"
       - ".github/workflows/validate.yml"
   workflow_dispatch:
 

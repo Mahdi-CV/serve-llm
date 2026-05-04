@@ -155,7 +155,7 @@ AMD Skills are compatible with Cursor, Claude Code, OpenAI Codex, and Gemini CLI
 
 ### Cursor
 
-Install the AMD plugin from this repository through the Cursor plugin flow. The repo ships a `.cursor-plugin/plugin.json` and an `.mcp.json` so skills are discoverable as soon as the plugin is enabled.
+Install the AMD plugin from this repository through the Cursor plugin flow. The repo ships a `.cursor-plugin/plugin.json` so skills are discoverable as soon as the plugin is enabled.
 
 ### Claude Code
 
