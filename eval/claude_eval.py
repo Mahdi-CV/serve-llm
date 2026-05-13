@@ -1,9 +1,9 @@
 """Simple eval runner: invokes Claude Code with a prompt and reports time + token usage.
 
 Usage:
-    python run_eval.py "your prompt here"
-    python run_eval.py --prompt-file path/to/prompt.txt
-    echo "your prompt" | python run_eval.py -
+    python claude_eval.py "your prompt here"
+    python claude_eval.py --prompt-file path/to/prompt.txt
+    echo "your prompt" | python claude_eval.py -
 """
 
 from __future__ import annotations
