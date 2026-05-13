@@ -82,12 +82,13 @@ def run_trials(
     trials: int,
     runs_dir: Path | None,
     label: str,
+    yolo: bool = False,
 ) -> list[EvalResult]:
     results: list[EvalResult] = []
     for i in range(trials):
         sys.stderr.write(f"[{label}] trial {i + 1}/{trials} running ...\n")
         sys.stderr.flush()
-        elapsed, payload = run_claude(prompt, model, effort, skill, [])
+        elapsed, payload = run_claude(prompt, model, effort, skill, [], yolo=yolo)
         r = build_result(prompt, model, effort, skill, elapsed, payload)
         if r.is_error:
             sys.stderr.write(
@@ -234,6 +235,18 @@ def main() -> None:
         action="store_true",
         help="Emit the comparison JSON to stdout instead of the human-readable table.",
     )
+    parser.add_argument(
+        "--yolo",
+        "--dangerously-skip-permissions",
+        dest="yolo",
+        action="store_true",
+        help=(
+            "Pass --dangerously-skip-permissions to claude on every trial. "
+            "Without this, claude -p stops at the first tool-permission prompt "
+            "and just answers from memory, which makes any skill that wants to "
+            "run shell / scripts look like a no-op."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -255,10 +268,24 @@ def main() -> None:
         runs_dir.mkdir(parents=True, exist_ok=True)
 
     without_results = run_trials(
-        prompt, args.model, args.effort, None, args.trials, runs_dir, "no-skill"
+        prompt,
+        args.model,
+        args.effort,
+        None,
+        args.trials,
+        runs_dir,
+        "no-skill",
+        yolo=args.yolo,
     )
     with_results = run_trials(
-        prompt, args.model, args.effort, args.skill, args.trials, runs_dir, args.skill
+        prompt,
+        args.model,
+        args.effort,
+        args.skill,
+        args.trials,
+        runs_dir,
+        args.skill,
+        yolo=args.yolo,
     )
 
     metric_keys = [k for k, _l, _f in METRICS]

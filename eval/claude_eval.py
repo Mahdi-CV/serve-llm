@@ -107,6 +107,7 @@ def run_claude(
     effort: str | None,
     skill: str | None,
     extra_args: list[str],
+    yolo: bool = False,
 ) -> tuple[float, dict]:
     claude_bin = shutil.which("claude")
     if not claude_bin:
@@ -120,6 +121,12 @@ def run_claude(
             cmd += ["--effort", effort]
         if skill_root is not None:
             cmd += ["--add-dir", str(skill_root)]
+        if yolo:
+            # Bypass all tool-permission prompts so the model can actually run
+            # shell, edit files, etc. unattended. Without this, ``claude -p``
+            # silently degrades to "I would have run X" because there is no
+            # interactive user to approve tool calls.
+            cmd += ["--dangerously-skip-permissions"]
         cmd += extra_args
 
         start = time.perf_counter()
@@ -238,6 +245,18 @@ def main() -> None:
         action="store_true",
         help="Print the names of available skills under skills/ and exit.",
     )
+    parser.add_argument(
+        "--yolo",
+        "--dangerously-skip-permissions",
+        dest="yolo",
+        action="store_true",
+        help=(
+            "Pass --dangerously-skip-permissions to claude, so the model can "
+            "use shell / edit / write tools without per-call approval. "
+            "Required for any eval whose prompt actually wants the model to "
+            "run commands (otherwise claude -p degrades to memory-only answers)."
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON to stdout instead of the human-readable summary.")
     parser.add_argument(
         "--output",
@@ -261,7 +280,9 @@ def main() -> None:
 
     prompt = read_prompt(args)
 
-    elapsed, payload = run_claude(prompt, args.model, args.effort, args.skill, extra_args)
+    elapsed, payload = run_claude(
+        prompt, args.model, args.effort, args.skill, extra_args, yolo=args.yolo
+    )
     result = build_result(prompt, args.model, args.effort, args.skill, elapsed, payload)
 
     serialized = json.dumps(asdict(result), indent=2)
