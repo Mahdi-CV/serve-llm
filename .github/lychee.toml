@@ -27,4 +27,6 @@ accept = ["200..=206", "429"]
 #   '^https://intranet\.example\.com/',
 #   '^https://github\.com/[^/]+/[^/]+/pull/',
 exclude = [
+  # openai.com blocks GitHub-hosted runner IPs with 403; the page is fine
+  '^https://openai\.com/codex/?$',
 ]
