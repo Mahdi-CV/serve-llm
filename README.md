@@ -193,14 +193,14 @@ The agent loads the matching `SKILL.md` and any helper scripts, then carries out
 
 We welcome contributions from AMD engineers and selected partners. There are two paths, matching how the catalog is organized:
 
-- **Path A — In-repo skills.** Authored directly under `skills/` in this repository. Best for cross-cutting workflows that do not have a natural product home.
-- **Path B — Product-repo skills.** Authored in a product repository and registered here through `catalog/` with a pinned tag. Best for skills that should ship and version with a specific product (HIP, ROCm, Ryzen AI, Lemonade, etc.).
+- **Path A: In-repo skills.** Authored directly under `skills/` in this repository. Best for cross-cutting workflows that do not have a natural product home.
+- **Path B: Product-repo skills.** Authored in a product repository and registered here through `catalog/` with a pinned tag. Best for skills that should ship and version with a specific product (HIP, ROCm, Ryzen AI, Lemonade, etc.).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for step-by-step instructions, the full authoring guide, and the rules CI enforces on every pull request.
 
 ## Status
 
-This repository is in its early days. In-repo skills include `skills/local-ai-app-integration/` and `skills/local-ai-use/`, seeding the **Application integration** focus area, and `skills/apu-memory-tuner/`, seeding the **Hardware-native** focus area. The remaining Hardware-native, Cross-stack porting, and Profiling and delivery skills are being built out incrementally alongside manifests and CI. Expect rapid iteration. File an issue if there is a workflow you want covered, or open a PR with a skill you have been wanting to share.
+This repository is in its early days. In-repo skills include `skills/local-ai-app-integration/` and `skills/local-ai-use/`, seeding the **Application integration** focus area, and `skills/apu-memory-tuner/`, seeding the **Hardware-native** focus area. The remaining skills are being built out incrementally alongside manifests and CI. Expect rapid iteration.
 
 ## License
 
