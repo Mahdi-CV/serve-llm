@@ -5,7 +5,7 @@ three-step flow in `SKILL.md` doesn't cover a decision.
 
 ## Contents
 
-- [The twelve known misconfigurations](#the-twelve-known-misconfigurations)
+- [The known-misconfigurations catalog](#the-known-misconfigurations-catalog)
 - [Silent-footgun environment variables](#silent-footgun-environment-variables)
 - [Framework support matrix](#framework-support-matrix)
 - [Device support, phased](#device-support-phased)
@@ -17,12 +17,19 @@ three-step flow in `SKILL.md` doesn't cover a decision.
 
 ---
 
-## The twelve known misconfigurations
+## The known-misconfigurations catalog
 
 The closed list `diagnose.py` checks against. Each row maps to one
-`fix-N-...` recipe in `apply_fix.py`. **If a user's symptom doesn't match
-one of these twelve, the skill must not speculate** -- it exits 1 and
+`fix-N-...` recipe in `apply_fix.py`. **If a user's symptom doesn't
+match any of these, the skill must not speculate** -- it exits 1 and
 prints the upstream tracker URL from `_route_when_no_match`.
+
+This catalog grows over time. To add a new failure mode: add a
+`check_N_*` function to `scripts/diagnose.py`, a `FixRecipe` with the
+matching `fix-id` to `scripts/apply_fix.py`'s `RECIPES`, and a row to
+the table below. The decision-tree contract -- score 0..100, emit the
+recipe's `verify` command on a hit, exit 1 + route upstream on a miss --
+stays the same regardless of catalog size.
 
 | # | fix-id | Failure pattern | Typical signal | Default fix |
 |---|---|---|---|---|

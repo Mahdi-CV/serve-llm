@@ -10,8 +10,8 @@ framework actually touches the system ROCm install (so: PyTorch, llama.cpp,
 and anything built against `/opt/rocm`, but NOT Lemonade / LM Studio /
 Ollama, which ship their own runtime).
 
-The script collects the minimum set of facts needed to disambiguate the
-twelve known misconfigurations in `reference.md`. It never installs or
+The script collects the minimum set of facts needed to disambiguate
+every known misconfiguration in `reference.md`. It never installs or
 removes packages, never changes group membership, and never edits files.
 
 Exit codes:

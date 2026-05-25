@@ -344,7 +344,7 @@ def run_hip_visible_devices(args, recipe: FixRecipe) -> int:
 
 
 # ---------------------------------------------------------------------------
-# Recipe registry. Mirrors the twelve diagnoses in `diagnose.py`. Only the
+# Recipe registry. Mirrors the diagnosis catalog in `diagnose.py`. Only the
 # small, safe, well-bounded fixes are auto-applicable; everything else is
 # advisory and prints the plan only.
 # ---------------------------------------------------------------------------

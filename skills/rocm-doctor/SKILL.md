@@ -1,52 +1,58 @@
 ---
 name: rocm-doctor
 description: >-
-  Diagnoses why ROCm, PyTorch, or llama.cpp isn't working on an AMD GPU
-  by matching the symptom against twelve known misconfigurations and
-  either applying a low-risk fix with consent or handing back the exact
-  next step. Use when the user says "ROCm/HIP isn't working",
-  "torch.cuda.is_available() is False on Radeon/Ryzen AI",
+  Diagnoses why ROCm, PyTorch, or llama.cpp fails on an AMD GPU by
+  matching symptoms against a closed catalog of known misconfigurations,
+  then either applies a low-risk fix with consent or hands back the
+  exact next step. Also routes Lemonade, LM Studio, and Ollama users to
+  the right upstream channel. Use when the user says "ROCm/HIP isn't
+  working", "torch.cuda.is_available() is False on Radeon/Ryzen AI",
   "rocminfo can't find my GPU", "hipErrorNoBinaryForGpu",
   "HSA_STATUS_ERROR_INVALID_ISA", "invalid device function",
   "Unable to open /dev/kfd", "ROCk module is NOT loaded",
-  "libamdhip64.so cannot open shared object file", "amdgpu-install broke
-  apt", "ROCm wheel doesn't see my gfx1151/gfx1150/gfx1103 (Strix Halo,
-  Phoenix)", "iGPU/dGPU collision", "multi-GPU hang"; or mentions
-  HSA_OVERRIDE_GFX_VERSION, HIP_VISIBLE_DEVICES, PYTORCH_ROCM_ARCH,
-  render group / /dev/kfd permissions, amdgpu blacklist, or Secure Boot
-  blocking amdgpu. Do NOT use for non-AMD GPUs, fresh ROCm installs,
-  performance tuning, or Lemonade/LM Studio/Ollama -- those ship their
-  own ROCm; route upstream.
+  "libamdhip64.so cannot open shared object file", "ROCm wheel doesn't
+  see my gfx1151/gfx1150/gfx1103 (Strix Halo, Phoenix)", "iGPU/dGPU
+  collision", "multi-GPU hang on AMD"; or mentions HSA_OVERRIDE_GFX_VERSION,
+  HIP_VISIBLE_DEVICES, PYTORCH_ROCM_ARCH, render-group / /dev/kfd
+  permissions, amdgpu blacklist, Secure Boot, or asks where to file a
+  Lemonade / LM Studio / Ollama issue. Do NOT use for non-AMD GPUs,
+  fresh installs, or performance tuning.
 ---
 
 # ROCm Doctor
 
 Given a "ROCm/PyTorch/llama.cpp isn't working on my AMD GPU" complaint,
-identify which of a fixed list of **twelve known misconfigurations** is
-the cause and either fix it or hand back the exact next step.
+identify which **known misconfiguration** is the cause and either fix it
+or hand back the exact next step.
 
-This is a diagnose-and-fix skill, not a setup or tuning skill. The closed
-list is deliberate: if the user's symptom doesn't match one of the twelve,
-the skill explicitly routes upstream rather than guessing.
+This is a diagnose-and-fix skill, not a setup or tuning skill. The
+catalog of failure modes is a **closed list** that lives in
+`reference.md` and `scripts/diagnose.py`: if the user's symptom doesn't
+match one of them, the skill explicitly routes upstream rather than
+guessing. New failure modes get added by editing the catalog, not by
+the agent inventing them at runtime.
 
 ## When to use this skill
 
-Use it when **all** of the following are true:
+Use it when **any** of the following are true:
 
-- The user has an **AMD** GPU (APU or discrete). NVIDIA / Intel / Apple
-  Silicon are out of scope; exit cleanly and route the user.
-- The user's framework is **PyTorch**, **llama.cpp**, or anything else
-  built directly against the system ROCm (`/opt/rocm` or a pip wheel that
-  bundles HIP). Lemonade, LM Studio, and Ollama ship their own runtimes
-  and bypass the system install entirely; skip examination and route
-  upstream (see [Framework routing](#framework-routing)).
-- There is a **functional** error (import fails, `torch.cuda.is_available()`
-  is `False`, `rocminfo` errors, a kernel can't launch). Pure performance
-  complaints belong in `mi-tuner` / `omniperf-tune` / `apu-memory-tuner`.
+- The user has an **AMD** GPU and a functional error with **PyTorch**,
+  **llama.cpp**, or anything else built directly against the system ROCm
+  (`/opt/rocm` or a pip wheel that bundles HIP). The skill examines the
+  host and diagnoses against the catalog.
+- The user is on **Lemonade**, **LM Studio**, or **Ollama**. These apps
+  ship their own ROCm and don't need a host-level examination, but the
+  user often doesn't know *where* to report the problem -- the skill
+  knows the right upstream channel for each (see
+  [Framework routing](#framework-routing)) and hands it over.
 
-Do not use it for fresh installs on a clean machine. That is a setup task;
-point the user at `amdgpu-install` from the [AMD ROCm install
-guide](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/install-overview.html).
+Out of scope:
+
+- NVIDIA / Intel / Apple Silicon GPUs. Exit cleanly and tell the user.
+- Fresh installs on a clean machine. That's a setup task; point at
+  [`amdgpu-install`](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/install-overview.html).
+- Pure performance complaints. Those belong in `mi-tuner` /
+  `omniperf-tune` / `apu-memory-tuner`.
 
 ## Prerequisites
 
@@ -60,9 +66,8 @@ guide](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/ins
   - `python` / `python3` to introspect PyTorch
   - `llama-cli` / `llama-server` / `main` to introspect llama.cpp
 - **Permissions:** examination is fully read-only and works as a regular
-  user. Some fixes (`fix-4-render-group`, `fix-5-amdgpu-load`,
-  `fix-7-stale-repos`, `fix-11-iommu`, `fix-12-installer`) need `sudo`;
-  the script always prints the command before asking for consent.
+  user. Several fixes need `sudo` (the recipe metadata flags this); the
+  script always prints the command before asking for consent.
 
 Silent footguns to surface explicitly when relevant:
 
@@ -85,7 +90,7 @@ changing anything.
 
 ```
 [ ] 1. Identify the framework, then examine (read-only).
-[ ] 2. Diagnose: match examination + symptom against the twelve known cases.
+[ ] 2. Diagnose: match examination + symptom against the catalog.
 [ ] 3. Propose the fix; only apply with explicit consent; re-verify.
 ```
 
@@ -118,10 +123,10 @@ For a quick read-only summary without piping JSON, drop `--json`:
 python scripts/examine.py --framework pytorch
 ```
 
-`examine.py` collects exactly the facts the twelve-case decision tree
-needs: OS / kernel, AMD GPUs and gfx targets, `amdgpu` / `amdkfd`
-status, `/dev/kfd` ownership and group, user's group membership, system
-ROCm version and install method, framework version and arch list, the
+`examine.py` collects exactly the facts the diagnosis catalog needs:
+OS / kernel, AMD GPUs and gfx targets, `amdgpu` / `amdkfd` status,
+`/dev/kfd` ownership and group, user's group membership, system ROCm
+version and install method, framework version and arch list, the
 silent-footgun env vars, container/IOMMU state, and recent `amdgpu`
 kernel log lines. It deliberately does NOT spawn heavy probes (no kernel
 launches, no model downloads).
@@ -135,8 +140,8 @@ python scripts/diagnose.py --exam exam.json \
   --symptom "HIP error: invalid device function on gfx1151"
 ```
 
-The script runs the twelve checkers, scores each from 0..100, and prints
-a ranked list. Each match has a stable `fix-N-...` id used by
+The script runs every checker in the catalog, scores each from 0..100,
+and prints a ranked list. Each match has a stable `fix-N-...` id used by
 `apply_fix.py`.
 
 Score tiers:
@@ -169,24 +174,20 @@ python scripts/apply_fix.py --fix-id fix-4-render-group --yes
 the interactive `[y/N]` prompt (only pass this after the user has agreed
 in chat).
 
-Five of the twelve fixes are auto-applicable; the rest are deliberately
+A subset of fixes are auto-applicable; the rest are deliberately
 print-only because the risk of a half-applied state is too high for an
-agent to take:
+agent to take. To see which is which without consulting `reference.md`:
 
-| Fix-id | Auto? | Why |
-|---|---|---|
-| `fix-1-arch` | Print-only | Reinstalls a framework; user must approve and pick the wheel index. |
-| `fix-2-unset-override` | Auto | Just unsets an env var + flags persistent rc lines. |
-| `fix-3-rocm-kernel` | Print-only | Upgrading kernels needs the user. |
-| `fix-4-render-group` | Auto | `usermod -a -G render,video $USER` is well-bounded. |
-| `fix-5-amdgpu-load` | Print-only | Editing modprobe.d + initramfs regen needs the user. |
-| `fix-6-path` | Auto | Appends one line to `~/.bashrc` / `~/.zshrc`. |
-| `fix-7-stale-repos` | Print-only | Moving repo files is destructive enough to require the user. |
-| `fix-8-wheel-rocm` | Print-only | Reinstalls a framework. |
-| `fix-9-igpu-dgpu` | Auto | Adds `export HIP_VISIBLE_DEVICES=N` (user supplies N via `--device-index`). |
-| `fix-10-container` | Print-only | Re-launches a container. |
-| `fix-11-iommu` | Print-only | Edits GRUB and reboots. |
-| `fix-12-installer` | Print-only | Reinstalls system packages. |
+```bash
+python scripts/apply_fix.py --list
+```
+
+That prints every `fix-id` with an `AUTO` or `PRINT-ONLY` tag. Auto
+fixes are bounded operations like unsetting an env var, adding the user
+to a group, or appending a single line to a shell rc. Print-only fixes
+involve reinstalling frameworks, editing GRUB, regenerating the
+initramfs, or moving system repo files; those need a human at the
+keyboard.
 
 After every fix, re-run the `verify` command the recipe printed. Only
 declare success when the user's *original* failing command now succeeds
@@ -196,21 +197,23 @@ GPU, the llama.cpp build runs).
 ## Framework routing
 
 The skill's first decision is which framework the user runs. Some
-frameworks ship their own ROCm and bypass the system install -- examining
-the host is the wrong question for them.
+frameworks ship their own ROCm and bypass the system install; for those
+the right answer is "you're in the wrong place, here's where to file
+it", and the skill delivers that answer directly rather than running
+useless probes against the host.
 
-| Framework | Examine the system? | Where to send the user |
+| Framework | Examine the host? | Action |
 |---|---|---|
-| PyTorch | Yes | `python scripts/examine.py --framework pytorch` |
-| llama.cpp (built against system ROCm) | Yes | `python scripts/examine.py --framework llama-cpp` |
-| Lemonade | No -- ships its own ROCm | <https://github.com/lemonade-sdk/lemonade> + [Discord](https://discord.gg/5xXzkMu8Zk) |
-| LM Studio | No -- ships its own runtime | <https://lmstudio.ai/docs/app> + Discord |
-| Ollama | No -- ships its own runtime | <https://github.com/ollama/ollama> + Discord |
+| PyTorch | Yes | `python scripts/examine.py --framework pytorch`, then `diagnose.py`. |
+| llama.cpp (built against system ROCm) | Yes | `python scripts/examine.py --framework llama-cpp`, then `diagnose.py`. |
+| Lemonade | No -- ships its own ROCm | Route to <https://github.com/lemonade-sdk/lemonade/issues> and the Lemonade [Discord](https://discord.gg/5xXzkMu8Zk). |
+| LM Studio | No -- ships its own runtime | Route to <https://lmstudio.ai/docs/app> (in-app support; no public repo). |
+| Ollama | No -- ships its own runtime | Route to <https://github.com/ollama/ollama/issues> and the Ollama Discord. |
 | vLLM / SGLang | Out of scope until phase 1+ | Route to the project's own issue tracker. |
 
-If a Lemonade / LM Studio / Ollama user really does have a system ROCm
+If a Lemonade / LM Studio / Ollama user *does* have a host-level ROCm
 problem (rare), it shows up when their app fails AND a standalone
-`rocminfo` also fails. Only then run the full examination.
+`rocminfo` also fails. Only then escalate to the full examination.
 
 ## Safety rules
 
@@ -223,8 +226,8 @@ problem (rare), it shows up when their app fails AND a standalone
   wheel exists. That is `fix-2-unset-override`'s entire reason for being.
 - Never silently fall back to a different fix when the requested one
   isn't applicable. Exit 3 and tell the user why.
-- When nothing matches the twelve known cases, **do not speculate**. Hand
-  the user the upstream tracker URL from `diagnose.py --json`.
+- When nothing in the catalog matches, **do not speculate**. Hand the
+  user the upstream tracker URL from `diagnose.py --json`.
 
 ## Verification checklist
 
@@ -246,7 +249,7 @@ rather than declaring victory.
 
 ## Reference
 
-For the full table of twelve known misconfigurations, every fix-id and
-its verify command, the silent-footgun env-var reference, and the
+For the full catalog of known misconfigurations, every fix-id and its
+verify command, the silent-footgun env-var reference, and the
 upstream-routing table in machine-readable form, see
 [reference.md](reference.md).

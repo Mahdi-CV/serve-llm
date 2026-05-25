@@ -11,7 +11,7 @@ built around. It takes:
   1. The JSON output of `examine.py` (machine state).
   2. Optionally the user's error text (symptom).
 
-and returns a ranked list of matches against the twelve known
+and returns a ranked list of matches against the catalog of known
 misconfigurations in `reference.md`. Each match comes with:
 
   - id       : stable identifier reused by `apply_fix.py` (e.g. "fix-4-render-group").
