@@ -142,13 +142,21 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the step-by-step contribution flow fo
 ### Repository layout
 
 ```
-skills/             # Skills authored in this repository
-catalog/            # Manifest pointers to skills that live in product repositories
+skills/             # All skills the agent can load (in-repo + vendored copies of federated)
+catalog/            # Master list of external skill sources (catalog/sources.yml)
 .cursor-plugin/     # Cursor plugin manifest
 .claude-plugin/     # Claude Code marketplace manifest
-.github/workflows/  # CI for validating skills and manifests
-scripts/            # Tooling for publishing and regenerating manifests
+.github/workflows/  # CI for validating skills and the `import-external-skills` workflow
+scripts/            # Tooling for publishing, regenerating manifests, and importing
 ```
+
+In-repo skills are authored directly under `skills/`. Federated skills are
+declared in [`catalog/sources.yml`](catalog/README.md) and vendored into
+`skills/` by the manually-dispatched `import-external-skills` workflow,
+which opens a pull request with the imported copies. Each vendored skill
+carries a `.federated.json` marker that records the upstream repo and
+pinned commit, so the importer can refresh or remove it without disturbing
+in-repo skills.
 
 ## Manual Installation
 
