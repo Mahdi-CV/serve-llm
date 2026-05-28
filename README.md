@@ -72,7 +72,6 @@ Diagnose, configure, and ready AMD systems for AI workloads: drivers, BIOS, memo
 | --- | --- | --- |
 | [`apu-memory-tuner`](skills/apu-memory-tuner/SKILL.md) | Inspect and tune the shared-vs-dedicated memory split (GTT / UMA Frame Buffer) on AMD Ryzen APUs. | in-repo |
 | [`rocm-doctor`](skills/rocm-doctor/SKILL.md) | Diagnose ROCm / PyTorch / llama.cpp failures on AMD GPUs against a fixed list of known misconfigurations. | in-repo |
-| `mi-tuner` | Opinionated inference tuning for MI accelerators (TunableOp, FSDP, FlashAttention). | _planned_ |
 | `gfx-target-chooser` | Pick the right `gfx942` / `gfx90a` / `gfx1100` target and matching compiler flags. | _planned_ |
 | `pytorch-rocm-setup` | Get a known-good PyTorch + ROCm stack running on a target node, end to end. | _planned_ |
 
@@ -100,6 +99,7 @@ Bring existing workloads onto AMD.
 | --- | --- | --- |
 | `cuda-to-hip` | Port CUDA kernels with `hipify` and flag anything that needs manual review. | _planned_ |
 | `vllm-rocm` | Stand up vLLM on AMD with the right environment variables and model configurations. | _planned_ |
+| `serving-llms-on-instinct` | Deploy LLM inference on AMD Instinct GPUs end-to-end: detect hardware (or onboard via AMD Developer Cloud), validate model fit, apply the right vLLM recipe, and launch a benchmarked endpoint. SGLang and engine/backend selection in later phases. | _planned_ |
 
 ### Performance & delivery
 
