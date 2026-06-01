@@ -63,6 +63,12 @@
       "description": "This skill should be used when optimizing PyTorch models and kernels, including efficient tensor operations, torch.compile, custom autograd/CUDA/Triton extensions, mixed precision, memory and data pipeline tuning, model optimization techniques, CUDA graphs, and profiling."
     },
     {
+      "name": "serving-llms-on-instinct",
+      "source": "./skills/serving-llms-on-instinct",
+      "skills": "./",
+      "description": "Deploy and serve AI models on AMD Instinct GPU hardware (MI300X, MI350X, MI325X, MI250X) using vLLM. Covers the full path from bare metal to a running OpenAI-compatible endpoint: GPU detection, environment validation, model-specific Docker configuration, launch, and health verification. Supports 25+ models including Qwen3, DeepSeek, Gemma 4, Llama 4, and GPT-OSS across single-GPU and multi-GPU configurations."
+    },
+    {
       "name": "rocm-doctor",
       "source": "./skills/rocm-doctor",
       "skills": "./",

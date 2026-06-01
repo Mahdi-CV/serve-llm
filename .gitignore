@@ -1,6 +1,9 @@
 # Local-only working area (briefings, drafts, generated decks).
 internal/
 
+# Session history log (local only, not for PR)
+HISTORY.md
+
 # Python
 __pycache__/
 *.pyc
