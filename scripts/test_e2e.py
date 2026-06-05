@@ -104,7 +104,7 @@ def slugify(model_id):
 def _run(cmd, host=None, user=None, port=22, timeout=30):
     try:
         if not host or host in ("local", "localhost", "127.0.0.1"):
-            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
         else:
             ssh_target = f"{user}@{host}" if user else host
             ssh = [
@@ -116,7 +116,7 @@ def _run(cmd, host=None, user=None, port=22, timeout=30):
                 "-p", str(port),
                 ssh_target, cmd,
             ]
-            r = subprocess.run(ssh, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(ssh, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
         return r.returncode, r.stdout, r.stderr
     except subprocess.TimeoutExpired:
         return 1, "", f"Timed out after {timeout}s"

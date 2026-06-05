@@ -172,9 +172,14 @@ Run the Docker command. Then poll health:
 until curl -sf http://localhost:8000/health; do sleep 10; done && echo "READY"
 ```
 
-Expected load times vary by model size, network speed, and whether the model
-is cached locally. A 503 during loading is normal. Do not conclude failure
-prematurely -- large MoE models (600B+) can take 20+ minutes to load.
+Expected load times vary by network speed and whether the model is cached
+locally. Rough timeout guidance for cached models:
+- Models < 20B: ~5 minutes
+- 70B models: ~10 minutes
+- 200B+ MoE: ~20 minutes
+- 600B+ MoE (DeepSeek-R1): ~30 minutes
+
+A 503 during loading is normal. Do not conclude failure prematurely.
 
 If the model is not cached locally, the download happens inside the container's
 engine core process with no visible progress in `docker logs`. Check that the

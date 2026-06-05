@@ -29,7 +29,7 @@ def _is_local(host):
 def _run(cmd, host, user, port, timeout=30):
     try:
         if _is_local(host):
-            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
         else:
             ssh_target = f"{user}@{host}" if user else host
             ssh = [
@@ -41,7 +41,7 @@ def _run(cmd, host, user, port, timeout=30):
                 "-p", str(port),
                 ssh_target, cmd,
             ]
-            r = subprocess.run(ssh, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(ssh, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout)
         return r.returncode, r.stdout, r.stderr
     except subprocess.TimeoutExpired:
         target = f"{user}@{host}" if user else host

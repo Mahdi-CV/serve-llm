@@ -58,7 +58,7 @@ def _clone_recipes(verbose=False):
     r = subprocess.run(
         ["git", "clone", "--depth=1", "--single-branch", "--filter=blob:none",
          REPO_URL, tmpdir],
-        capture_output=True, text=True, timeout=30,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30,
     )
     if r.returncode != 0:
         shutil.rmtree(tmpdir, ignore_errors=True)
@@ -116,7 +116,7 @@ def _fetch_docker_tag(verbose=False):
     url = f"{DOCKERHUB_URL}?page_size=50&ordering=last_updated"
     r = subprocess.run(
         ["curl", "-sf", "--max-time", "5", url],
-        capture_output=True, text=True, timeout=10,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10,
     )
     if r.returncode != 0:
         return "latest", ""
