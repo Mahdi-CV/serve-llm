@@ -24,10 +24,31 @@
 Detect gfx_version:
 ```bash
 amd-smi static --asic --json | python3 -c \
-  "import sys,json; [print(g['asic']['target_graphics_version']) for g in json.load(sys.stdin)['gpu_data']]"
+  "import sys,json; d=json.load(sys.stdin); gs=d if isinstance(d,list) else d.get('gpu_data',[d]); [print(g['asic']['target_graphics_version']) for g in gs]"
 # or
 rocminfo | grep "gfx"
 ```
+
+### Precision Compatibility
+
+| Format | gfx942 (MI300X) | gfx950 (MI350X) | Notes |
+|---|---|---|---|
+| BF16 / FP16 | Native | Native | Default for all models |
+| FP8 (FNUZ) | Native | Emulated | MI300X uses E4M3FNUZ dialect |
+| FP8 (OCP) | Emulated | Native | MI350X uses E4M3FN (OCP standard) |
+| INT8 | Native | Native | |
+| MXFP4 | Emulated | Native | On gfx942: dequants to BF16, no VRAM savings |
+| MXFP6 | Emulated | Native | On gfx942: dequants to BF16, no VRAM savings |
+| NVFP4 | Emulated | Emulated | NVIDIA-specific, always dequants to BF16 on AMD |
+
+"Emulated" means the format is handled via dequantization to BF16 at runtime.
+The model still loads and runs correctly but there are no VRAM savings compared
+to BF16. vLLM auto-converts between FP8 dialects (FNUZ/OCP) transparently.
+
+Recipe `nvfp4` variant VRAM numbers assume NVIDIA hardware with native FP4.
+On AMD, these variants use the same VRAM as the `default` (BF16) variant.
+Prefer `default` or `fp8` variants on gfx942. On gfx950, `mxfp4` variants
+(when available) will provide real VRAM savings.
 
 ---
 
@@ -110,6 +131,7 @@ TP degree must divide evenly into the model's attention head count.
 | Flag | Why |
 |---|---|
 | `--group-add=video` | amdgpu exposes GPUs to the `video` group |
+| `--group-add=render` | GPU render nodes require the `render` group on many hosts |
 | `--cap-add=SYS_PTRACE` | ROCm JIT compilation requires ptrace |
 | `--security-opt seccomp=unconfined` | ROCm mmap variants blocked by default seccomp |
 | `--device /dev/kfd` | Kernel Fusion Driver — primary GPU access |
@@ -225,13 +247,23 @@ Non-persistent — resets on reboot.
 
 **First-token warmup delay**
 vLLM compiles and caches HIP kernels on first use per input shape.
-First inference after model load: 30–90 seconds on gfx942.
+First inference after model load: ~40-45 seconds on gfx942.
 Send a warmup request immediately after `/health` returns 200 for demos.
 
 **hipBLASLt path discovery**
 Some environments need `TORCH_BLAS_PREFER_HIPBLASLT=1` set explicitly.
 Without it, PyTorch may fall back to a slower BLAS path.
 `validate.py` checks for this and reports if the path is not found.
+
+**"Engine core initialization failed"**
+This opaque error covers many root causes. Check early container logs
+(`docker logs <name> 2>&1 | head -50`) -- the actual error is often from the
+engine core subprocess, not the main process. Common causes:
+- Gated model: HF license not accepted (not just missing token)
+- Unsupported architecture on this vLLM version
+- OOM during weight loading
+- Missing `--trust-remote-code` for custom model architectures
+- vLLM version too old (check `min_vllm_version` in the recipe)
 
 **ROCm version for Kimi-K2.5**
 Kimi-K2.5 requires ROCm 7.2.1 minimum. Fails silently or with obscure errors

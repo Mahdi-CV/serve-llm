@@ -24,7 +24,10 @@ Get a vLLM endpoint running on AMD Instinct GPU hardware.
 - Docker running and accessible (check with `docker ps`)
 - `/dev/kfd` and `/dev/dri` present on the GPU host
 - HuggingFace token in `HF_TOKEN` env var (required for gated models; not
-  required for Qwen3 or Gemma)
+  required for Qwen3 or Gemma). For gated models (Llama 3.2, Gemma, etc.),
+  the HF token must belong to an account that has accepted the model's license
+  at `huggingface.co/<model_id>`. A valid token without license acceptance will
+  fail with an opaque "Engine core initialization failed" error.
 - For remote GPU: SSH key access configured (`ssh <user>@<host>` must work
   without a password prompt)
 
@@ -104,24 +107,43 @@ Build the Docker command by combining:
 
 1. **Docker flags** from `gpu_overrides.json > docker_flags` (mandatory for all AMD GPUs)
 2. **HF cache mount**: `-v ~/.cache/huggingface:/root/.cache/huggingface`
-   (if a shared cache like `/home/amd/models` exists, mount it to
-   `/root/.cache/huggingface/hub` instead)
+   (if a shared cache like `/home/amd/models` exists, check whether
+   `models--*` directories are at the cache root or inside a `hub/`
+   subdirectory -- mount accordingly to `/root/.cache/huggingface` or
+   `/root/.cache/huggingface/hub`)
 3. **Port**: `-p <port>:<port>` (default 8000)
 4. **Environment variables**: merge `gpu_configs.<gfx_version>.env_defaults`
    with the recipe's `model.base_env` and `hardware_overrides.amd.extra_env`.
    Always add `--env HF_TOKEN=${HF_TOKEN}`.
 5. **Docker image**: use `docker_image` from `recipes_cache.json` top level
-   (unless the model needs a pinned image, e.g. GLM-4.5 needs `v0.15.1`)
+   (unless the model needs a pinned image, e.g. GLM-4.5 needs `v0.15.1`).
+   If the user specifies a Docker image version, check it against the recipe's
+   `model.min_vllm_version`. Warn if the image is older -- the model may crash
+   on startup with an opaque "Engine core initialization failed" error.
 6. **Model ID**: `--model <HF_ID>`
 7. **vLLM args**: combine the recipe's `model.base_args` +
    `hardware_overrides.amd.extra_args` + `features.tool_calling.args` +
    `features.reasoning.args`. Add `--enable-auto-tool-choice` if not present.
-   For multi-GPU, add `--tensor-parallel-size N`.
+   For multi-GPU, add `--tensor-parallel-size N`. To compute TP: divide
+   `vram_minimum_gb` from the recipe's default variant by the per-GPU VRAM
+   (e.g., 192 GB for MI300X). Round up to the next power of 2 (1, 2, 4, 8).
+   For MoE models on multi-GPU, also add `--distributed-executor-backend mp`.
 8. **Port arg**: `--port <port>`
 
-If the model is not in `recipes_cache.json`, check `legacy_models` in
-`gpu_overrides.json`. If not there either, use a generic config with
+If the exact model ID is not in `recipes_cache.json`, check for a base model
+match by stripping date/version suffixes (e.g., `Kimi-K2-Instruct` matches
+`Kimi-K2-Instruct-0905`). Use the base model's recipe if found.
+
+If no recipe match, check `legacy_models` in `gpu_overrides.json`. If not
+there either, use a generic config with
 `--enable-auto-tool-choice --trust-remote-code --tool-call-parser hermes`.
+
+**Precision variant selection:** Recipes may offer variants (default, fp8,
+nvfp4). Check `gpu_configs.<gfx_version>.precision.native` in
+`gpu_overrides.json` before selecting a variant. On gfx942 (MI300X), only
+`bf16`, `fp16`, `fp8_fnuz`, and `int8` are hardware-native. MXFP4 and NVFP4
+are emulated via dequant to BF16 with no VRAM savings -- use the `default`
+or `fp8` variant instead. On gfx950 (MI350X), MXFP4 is hardware-native.
 
 Docker command template:
 ```
@@ -150,14 +172,16 @@ Run the Docker command. Then poll health:
 until curl -sf http://localhost:8000/health; do sleep 10; done && echo "READY"
 ```
 
-Expected load times after the model is cached locally:
-- Small models (< 20B): 2-4 minutes
-- Large models (70B+): 8-15 minutes
+Expected load times vary by model size, network speed, and whether the model
+is cached locally. A 503 during loading is normal. Do not conclude failure
+prematurely -- large MoE models (600B+) can take 20+ minutes to load.
 
-A 503 during this window is normal. Only conclude failure after 15+ minutes.
+If the model is not cached locally, the download happens inside the container's
+engine core process with no visible progress in `docker logs`. Check that the
+container is still working with `docker stats <name> --no-stream`.
 
 After health returns 200, send a warmup request (triggers HIP kernel compilation,
-30-90 seconds on gfx942):
+~40-45 seconds on gfx942):
 ```bash
 curl -s http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -204,6 +228,13 @@ This is in the recipe args for these models.
 **MoE models on multi-GPU need `--distributed-executor-backend mp`** --
 Qwen3-235B, GLM-4.5, MiniMax-M2. The default distributed executor does not
 work reliably with MoE on ROCm.
+
+**"Engine core initialization failed"** -- This opaque error means the engine
+core subprocess died. Check early container logs: `docker logs <name> 2>&1 |
+head -50`. Common causes: gated model access denied (license not accepted on
+HF), unsupported architecture on this vLLM version, OOM during weight loading,
+missing `--trust-remote-code` for custom architectures, or vLLM version too old
+for the model (check `min_vllm_version` in the recipe).
 
 **`/dev/kfd` permission denied** -- User is not in the `video` or `render`
 group. Fix: `sudo usermod -aG video,render $USER` (requires re-login).
