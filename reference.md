@@ -211,8 +211,8 @@ Do NOT use `vllm/vllm-openai` (CUDA-only).
 
 | Variable | Rule |
 |---|---|
-| `CUDA_VISIBLE_DEVICES` | **Never set on AMD.** Hides AMD GPUs from ROCm runtime. |
-| `HIP_VISIBLE_DEVICES=0,1,2,3` | Use to restrict visible GPUs by index on multi-GPU hosts |
+| `CUDA_VISIBLE_DEVICES` | ROCm maps this to `HIP_VISIBLE_DEVICES`. Works with explicit indices (e.g. `0,1`). **Never set to empty string** -- hides all GPUs. |
+| `HIP_VISIBLE_DEVICES=0,1,2,3` | Canonical AMD variable. Use to restrict visible GPUs by index on multi-GPU hosts. |
 
 ### Loading / performance
 
@@ -233,11 +233,11 @@ Triggered when `VLLM_ROCM_USE_AITER_FP4BMM=1` on gfx942.
 Fix: always set `VLLM_ROCM_USE_AITER_FP4BMM=0` on gfx942.
 This is set correctly in `data/gpu_overrides.json` for gfx942.
 
-**CUDA_VISIBLE_DEVICES interference**
-If set in the shell environment (even to an empty string), this NVIDIA variable
-causes ROCm to see zero GPUs. Always unset before running AMD workloads:
-`unset CUDA_VISIBLE_DEVICES`. No Docker flag is needed -- Docker does not
-inherit host environment variables.
+**CUDA_VISIBLE_DEVICES empty string**
+ROCm maps `CUDA_VISIBLE_DEVICES` to `HIP_VISIBLE_DEVICES`. Setting it to an
+empty string hides all GPUs. Setting it to explicit indices (e.g. `0,1`) works
+correctly. If the host has it set to empty, unset it: `unset CUDA_VISIBLE_DEVICES`.
+Do not pass `--env CUDA_VISIBLE_DEVICES=` (empty) into Docker.
 
 **NUMA balancing latency spikes**
 `/proc/sys/kernel/numa_balancing=1` periodically migrates pages between NUMA nodes.

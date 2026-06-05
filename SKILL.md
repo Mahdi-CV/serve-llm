@@ -212,10 +212,12 @@ Use `localhost` for health/warmup curl URLs (curl runs on the remote host).
 
 ## Gotchas
 
-**`CUDA_VISIBLE_DEVICES` set on the host** -- AMD GPUs disappear. The ROCm
-runtime treats this NVIDIA variable as "no visible GPUs," even when set to an
-empty string. Unset it before launching: `unset CUDA_VISIBLE_DEVICES`.
-No Docker flag is needed -- Docker does not inherit host environment variables.
+**`CUDA_VISIBLE_DEVICES` set to empty string** -- ROCm maps this variable to
+`HIP_VISIBLE_DEVICES`. Setting it to an empty string hides all GPUs.
+`CUDA_VISIBLE_DEVICES=0,1` works fine for restricting GPUs (same as
+`HIP_VISIBLE_DEVICES=0,1`). If the host has it set to empty, unset it:
+`unset CUDA_VISIBLE_DEVICES`. Do not pass `--env CUDA_VISIBLE_DEVICES=` (empty)
+into Docker -- that also hides all GPUs inside the container.
 
 **FP4BMM crash on gfx942 (MI300X)** -- If the container exits immediately
 with a segfault or illegal instruction: `VLLM_ROCM_USE_AITER_FP4BMM` must be
@@ -248,7 +250,9 @@ group. Fix: `sudo usermod -aG video,render $USER` (requires re-login).
 fails with `Permission denied (publickey)`, configure key-based access first.
 
 **Restricting GPUs on shared hosts** -- Use `--env HIP_VISIBLE_DEVICES=0,1`
-to target specific GPUs by index. Never set `CUDA_VISIBLE_DEVICES` on AMD.
+or `--env CUDA_VISIBLE_DEVICES=0,1` to target specific GPUs by index.
+`HIP_VISIBLE_DEVICES` is the canonical AMD variable; `CUDA_VISIBLE_DEVICES`
+also works (ROCm maps it). Never set either to an empty string.
 
 ---
 
