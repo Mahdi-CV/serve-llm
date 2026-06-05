@@ -184,9 +184,9 @@ Use `localhost` for health/warmup curl URLs (curl runs on the remote host).
 ## Gotchas
 
 **`CUDA_VISIBLE_DEVICES` set on the host** -- AMD GPUs disappear. The ROCm
-runtime treats this NVIDIA variable as "no visible GPUs." Unset it before
-launching: `unset CUDA_VISIBLE_DEVICES`. Pass `--env CUDA_VISIBLE_DEVICES=`
-in the Docker command to block it inside the container.
+runtime treats this NVIDIA variable as "no visible GPUs," even when set to an
+empty string. Unset it before launching: `unset CUDA_VISIBLE_DEVICES`.
+No Docker flag is needed -- Docker does not inherit host environment variables.
 
 **FP4BMM crash on gfx942 (MI300X)** -- If the container exits immediately
 with a segfault or illegal instruction: `VLLM_ROCM_USE_AITER_FP4BMM` must be

@@ -167,13 +167,15 @@ def main():
             "fix": "docker pull vllm/vllm-openai-rocm:latest",
         })
 
-    # CUDA_VISIBLE_DEVICES footgun
-    rc, out, _ = _run("printenv CUDA_VISIBLE_DEVICES 2>/dev/null || echo ''", host, user, port)
-    if out.strip():
+    # CUDA_VISIBLE_DEVICES footgun -- catches both non-empty values AND empty string
+    rc, out, _ = _run("env | grep -c '^CUDA_VISIBLE_DEVICES=' || true", host, user, port)
+    if out.strip() and out.strip() != "0":
+        rc2, val, _ = _run("printenv CUDA_VISIBLE_DEVICES", host, user, port)
+        display = repr(val.strip()) if val.strip() == "" else val.strip()
         issues.append({
             "check": "cuda_visible_devices",
             "severity": "error",
-            "message": f"CUDA_VISIBLE_DEVICES is set to '{out.strip()}'. This hides AMD GPUs from the ROCm runtime.",
+            "message": f"CUDA_VISIBLE_DEVICES is set to {display}. Any value (including empty string) hides AMD GPUs from the ROCm runtime.",
             "fix": "unset CUDA_VISIBLE_DEVICES",
         })
 

@@ -82,7 +82,12 @@ def main():
         print(json.dumps({"error": f"amd-smi JSON parse failed: {e}", "raw": out[:200]}))
         sys.exit(1)
 
-    gpu_list = data.get("gpu_data", data if isinstance(data, list) else [data])
+    if isinstance(data, list):
+        gpu_list = data
+    elif isinstance(data, dict):
+        gpu_list = data.get("gpu_data", [data])
+    else:
+        gpu_list = [data]
     gpus = []
     for entry in gpu_list:
         asic = entry.get("asic", {})

@@ -212,9 +212,10 @@ Fix: always set `VLLM_ROCM_USE_AITER_FP4BMM=0` on gfx942.
 This is set correctly in `data/gpu_overrides.json` for gfx942.
 
 **CUDA_VISIBLE_DEVICES interference**
-If set in the shell environment, this NVIDIA variable causes ROCm to see zero GPUs.
-Always unset before running AMD workloads. Pass `--env CUDA_VISIBLE_DEVICES=`
-in the Docker command to block it inside the container.
+If set in the shell environment (even to an empty string), this NVIDIA variable
+causes ROCm to see zero GPUs. Always unset before running AMD workloads:
+`unset CUDA_VISIBLE_DEVICES`. No Docker flag is needed -- Docker does not
+inherit host environment variables.
 
 **NUMA balancing latency spikes**
 `/proc/sys/kernel/numa_balancing=1` periodically migrates pages between NUMA nodes.
