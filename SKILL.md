@@ -167,19 +167,25 @@ ss -tlnp 2>/dev/null | grep ':<port> '
 ```
 If a Docker container is on that port, stop it with `docker rm -f <name>`.
 
-Run the Docker command. Then poll health:
+Run the Docker command. Then poll health in a **single command** -- do NOT
+poll in a loop across multiple tool calls (each call costs a turn). Poll
+every 60 seconds. Instead of a fixed timeout, check if the container is
+still running -- if it died, fail immediately; if it's still up, keep waiting.
+
 ```bash
-until curl -sf http://localhost:8000/health; do sleep 10; done && echo "READY"
+while docker inspect --format='{{.State.Running}}' <container_name> 2>/dev/null | grep -q true; do
+  curl -sf http://localhost:8000/health && echo "READY" && exit 0
+  sleep 60
+done
+echo "FAILED -- container exited"
 ```
 
-Expected load times vary by network speed and whether the model is cached
-locally. Rough timeout guidance for cached models:
-- Models < 20B: ~5 minutes
-- 70B models: ~10 minutes
-- 200B+ MoE: ~20 minutes
-- 600B+ MoE (DeepSeek-R1): ~30 minutes
+Set the Bash tool's `timeout` parameter to 600000 (10 minutes). If it times
+out, call the same command again -- it will resume polling. This avoids
+wasting turns on individual health checks.
 
-A 503 during loading is normal. Do not conclude failure prematurely.
+A 503 during loading is normal. Models downloading on slow connections can
+take much longer than cached models.
 
 If the model is not cached locally, the download happens inside the container's
 engine core process with no visible progress in `docker logs`. Check that the
