@@ -41,5 +41,12 @@
     "models": [
       "Google/translategemma-27b-it"
     ]
+  },
+
+  "incompatible_weights": {
+    "_comment": "Models whose weight naming or architecture is incompatible with current vLLM stable (v0.22.0). Crashes during weight loading.",
+    "models": [
+      "thu-pacman/PCMind-2.1-Kaiyuan-2B"
+    ]
   }
 }
