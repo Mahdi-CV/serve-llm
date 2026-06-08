@@ -15,10 +15,10 @@
 
 | GPU | gfx_version | VRAM | AITER | FP4BMM |
 |---|---|---|---|---|
-| MI350X | gfx950 | 294 GB HBM3E | Yes | Safe (= 1) |
-| MI350 | gfx950 | 192 GB HBM3 | Yes | Safe (= 1) |
-| MI325X | gfx942 | 288 GB HBM3E | Yes | Crash bug (= 0) |
-| MI300X | gfx942 | 192 GB HBM2e | Yes | Crash bug (= 0) |
+| MI355X | gfx950 | 288 GB HBM3E | Yes | Safe (= 1) |
+| MI350X | gfx950 | 288 GB HBM3E | Yes | Safe (= 1) |
+| MI325X | gfx942 | 256 GB HBM3E | Yes | Crash bug (= 0) |
+| MI300X | gfx942 | 192 GB HBM3 | Yes | Crash bug (= 0) |
 | MI300A | gfx942 | 128 GB unified | Yes | Crash bug (= 0) |
 
 Detect gfx_version:
@@ -93,15 +93,16 @@ VRAM at FP16/BF16 unless noted.
 
 ## Single-GPU Model Guide
 
-### MI300X (192 GB) and MI350 (192 GB)
+### MI300X (192 GB)
 These fit at FP16 with KV cache headroom:
 Qwen3 up to 72B, Gemma 4 up to 31B, Llama 4 Scout (110 GB), GPT-OSS-20B,
 Qwen3-VL up to 32B, Qwen2.5-VL-72B, InternVL3.5-8B.
 
-Note: Models listed with "MI250X+" in the compatibility matrix are not in scope for this skill. Target hardware is MI300X and MI350X only.
+### MI325X (256 GB)
+Same as MI300X, plus larger models that need > 192 GB.
 
-### MI350X (294 GB)
-Additional models that fit single-GPU on MI350X but not MI300X:
+### MI350X / MI355X (288 GB)
+Additional models that fit single-GPU on MI350X/MI355X but not MI300X:
 - GPT-OSS-120B (247 GB)
 - MiniMax-M2.7 FP8 (~100 GB)
 

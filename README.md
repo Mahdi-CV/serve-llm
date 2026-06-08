@@ -1,6 +1,6 @@
 # serving-llms-on-instinct
 
-Claude Code skill for serving LLMs on AMD Instinct GPUs (MI300X, MI325X, MI350X) using vLLM.
+Claude Code skill for serving LLMs on AMD Instinct GPUs (MI300X, MI325X, MI350X, MI355X) using vLLM.
 
 Handles GPU detection, environment validation, vLLM configuration, Docker launch, and health verification. Supports 98+ models from vLLM recipes with automatic config resolution.
 
@@ -8,16 +8,16 @@ Handles GPU detection, environment validation, vLLM configuration, Docker launch
 
 | GPU | gfx_version | VRAM |
 |---|---|---|
-| MI350X | gfx950 | 294 GB |
-| MI350 | gfx950 | 192 GB |
-| MI325X | gfx942 | 288 GB |
-| MI300X | gfx942 | 192 GB |
-| MI300A | gfx942 | 128 GB |
+| MI355X | gfx950 | 288 GB HBM3E |
+| MI350X | gfx950 | 288 GB HBM3E |
+| MI325X | gfx942 | 256 GB HBM3E |
+| MI300X | gfx942 | 192 GB HBM3 |
+| MI300A | gfx942 | 128 GB unified |
 
 ## Install as Claude Code skill
 
 ```bash
-claude /install-skill https://github.com/Mahdi-CV/serve-llm
+git clone https://github.com/Mahdi-CV/serve-llm ~/.claude/skills/serve-llm
 ```
 
 ## Prerequisites

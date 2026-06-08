@@ -3,7 +3,7 @@ name: serving-llms-on-instinct
 description: >-
   Serves AI models on AMD Instinct GPU hardware using vLLM. Use this skill
   whenever the user wants to run, serve, deploy, start, host, or launch a
-  language model on an AMD GPU, AMD Instinct, MI300X, MI350X, or MI325X.
+  language model on an AMD GPU, AMD Instinct, MI300X, MI325X, MI350X, or MI355X.
   Also use when the user mentions vLLM on ROCm, vLLM on AMD, serving on HBM,
   or asks how to get a model running on AMD data center hardware. Use when the
   user asks "run Qwen3", "serve DeepSeek", "start a vLLM endpoint", "get a
@@ -70,8 +70,8 @@ Returns JSON with `gfx_version`, `vram_gb`, `gpu_count`, `rocm_version`.
 
 | gfx_version | Hardware | VRAM |
 |---|---|---|
-| gfx950 | MI350 / MI350X | 192-294 GB |
-| gfx942 | MI300X / MI300A / MI325X | 128-288 GB |
+| gfx950 | MI350X / MI355X | 288 GB HBM3E |
+| gfx942 | MI300X (192 GB) / MI325X (256 GB) / MI300A (128 GB) | varies |
 
 If `gfx_version` is `unknown`: `amd-smi` ran but found no GPU. Check
 `lsmod | grep amdgpu`.
