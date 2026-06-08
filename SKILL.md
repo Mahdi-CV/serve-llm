@@ -107,7 +107,7 @@ Build the Docker command by combining:
 
 1. **Docker flags** from `gpu_overrides.json > docker_flags` (mandatory for all AMD GPUs)
 2. **HF cache mount**: `-v ~/.cache/huggingface:/root/.cache/huggingface`
-   (if a shared cache like `/home/amd/models` exists, check whether
+   (if a shared model cache directory exists on the host, check whether
    `models--*` directories are at the cache root or inside a `hub/`
    subdirectory -- mount accordingly to `/root/.cache/huggingface` or
    `/root/.cache/huggingface/hub`)

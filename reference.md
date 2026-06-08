@@ -166,7 +166,6 @@ Do NOT use `vllm/vllm-openai` (CUDA-only).
 | `--mm-encoder-tp-mode data` | Multimodal + TP | Prevent redundant vision encoding |
 | `--attention-backend ROCM_AITER_FA` | MiniMax-M2 | After vLLM v0.21.0 |
 | `--max-model-len 32768` | Large MoE | Reduce KV cache VRAM |
-| `--dtype float16` | gfx908 (MI100) only | bfloat16 limited on MI100 |
 
 ### Tool call parsers
 
@@ -184,13 +183,13 @@ Do NOT use `vllm/vllm-openai` (CUDA-only).
 
 ### AITER (AMD Instinct TEnsor Runtime)
 
-| Variable | gfx950 | gfx942 | gfx90a | Effect |
-|---|---|---|---|---|
-| `VLLM_ROCM_USE_AITER` | **1** | **1** | 0 | Master AITER switch. 1.2–4.4× throughput on MI300+. |
-| `VLLM_ROCM_USE_AITER_FP4BMM` | **1** | **0** | 0 | FP4 matmul. Crash on gfx942 (vLLM #34641). Safe on gfx950. |
-| `VLLM_ROCM_USE_AITER_MHA` | 1 | 1 | — | AITER multi-head attention. Set 0 for Qwen3 MoE, Llama 4, GPT-OSS. |
-| `VLLM_ROCM_USE_AITER_RMSNORM` | 1 | 1 | — | AITER RMSNorm. Set 0 for Llama 4 Scout, Kimi-K2.5. |
-| `VLLM_USE_AITER_UNIFIED_ATTENTION` | — | — | — | Set 1 for GPT-OSS models. |
+| Variable | gfx950 | gfx942 | Effect |
+|---|---|---|---|
+| `VLLM_ROCM_USE_AITER` | **1** | **1** | Master AITER switch. 1.2-4.4x throughput. |
+| `VLLM_ROCM_USE_AITER_FP4BMM` | **1** | **0** | FP4 matmul. Crash on gfx942 (vLLM #34641). Safe on gfx950. |
+| `VLLM_ROCM_USE_AITER_MHA` | 1 | 1 | AITER multi-head attention. Set 0 for Qwen3 MoE, Llama 4, GPT-OSS. |
+| `VLLM_ROCM_USE_AITER_RMSNORM` | 1 | 1 | AITER RMSNorm. Set 0 for Llama 4 Scout, Kimi-K2.5. |
+| `VLLM_USE_AITER_UNIFIED_ATTENTION` | - | - | Set 1 for GPT-OSS models. |
 
 ### Attention backend
 

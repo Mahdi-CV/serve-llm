@@ -167,17 +167,25 @@ def main():
             "fix": "docker pull vllm/vllm-openai-rocm:latest",
         })
 
-    # CUDA_VISIBLE_DEVICES footgun -- catches both non-empty values AND empty string
+    # CUDA_VISIBLE_DEVICES footgun -- empty string hides all GPUs, explicit indices are OK
     rc, out, _ = _run("env | grep -c '^CUDA_VISIBLE_DEVICES=' || true", host, user, port)
     if out.strip() and out.strip() != "0":
         rc2, val, _ = _run("printenv CUDA_VISIBLE_DEVICES", host, user, port)
-        display = repr(val.strip()) if val.strip() == "" else val.strip()
-        issues.append({
-            "check": "cuda_visible_devices",
-            "severity": "error",
-            "message": f"CUDA_VISIBLE_DEVICES is set to {display}. Any value (including empty string) hides AMD GPUs from the ROCm runtime.",
-            "fix": "unset CUDA_VISIBLE_DEVICES",
-        })
+        raw_val = val.strip()
+        if raw_val == "":
+            issues.append({
+                "check": "cuda_visible_devices",
+                "severity": "error",
+                "message": "CUDA_VISIBLE_DEVICES is set to '' (empty string). This hides all GPUs from the ROCm runtime.",
+                "fix": "unset CUDA_VISIBLE_DEVICES",
+            })
+        else:
+            issues.append({
+                "check": "cuda_visible_devices",
+                "severity": "advisory",
+                "message": f"CUDA_VISIBLE_DEVICES is set to {raw_val}. ROCm maps this to HIP_VISIBLE_DEVICES. Only the listed GPUs will be visible.",
+                "fix": "unset CUDA_VISIBLE_DEVICES  # to use all GPUs",
+            })
 
     errors = [i for i in issues if i["severity"] == "error"]
     warnings = [i for i in issues if i["severity"] == "warning"]

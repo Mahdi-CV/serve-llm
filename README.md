@@ -17,7 +17,7 @@ Handles GPU detection, environment validation, vLLM configuration, Docker launch
 ## Install as Claude Code skill
 
 ```bash
-git clone https://github.com/Mahdi-CV/serve-llm ~/.claude/skills/serve-llm
+git clone <repo-url> ~/.claude/skills/serve-llm
 ```
 
 ## Prerequisites
