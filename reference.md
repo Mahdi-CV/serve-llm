@@ -1,31 +1,13 @@
 # serving-llms-on-instinct -- Reference
 
 ## Table of Contents
-1. [GPU Architecture](#gpu-architecture)
+1. [Precision Compatibility](#precision-compatibility)
 2. [Docker Flags](#docker-flags)
 3. [Known Quirks](#known-quirks)
 
 ---
 
-## GPU Architecture
-
-| GPU | gfx_version | VRAM | AITER | FP4BMM |
-|---|---|---|---|---|
-| MI355X | gfx950 | 288 GB HBM3E | Yes | Safe (= 1) |
-| MI350X | gfx950 | 288 GB HBM3E | Yes | Safe (= 1) |
-| MI325X | gfx942 | 256 GB HBM3E | Yes | Crash bug (= 0) |
-| MI300X | gfx942 | 192 GB HBM3 | Yes | Crash bug (= 0) |
-| MI300A | gfx942 | 128 GB unified | Yes | Crash bug (= 0) |
-
-Detect gfx_version:
-```bash
-amd-smi static --asic --json | python3 -c \
-  "import sys,json; d=json.load(sys.stdin); gs=d if isinstance(d,list) else d.get('gpu_data',[d]); [print(g['asic']['target_graphics_version']) for g in gs]"
-# or
-rocminfo | grep "gfx"
-```
-
-### Precision Compatibility
+## Precision Compatibility
 
 | Format | gfx942 (MI300X) | gfx950 (MI350X) | Notes |
 |---|---|---|---|
@@ -35,12 +17,13 @@ rocminfo | grep "gfx"
 | INT8 | Native | Native | |
 | MXFP4 | Emulated | Native | On gfx942: compute dequants to BF16, weights stay compressed |
 | MXFP6 | Emulated | Native | On gfx942: compute dequants to BF16, weights stay compressed |
-| NVFP4 | Emulated | Emulated | NVIDIA-specific, dequants to BF16 on AMD |
+| NVFP4 | Not supported | Not supported | NVIDIA-specific, no dequant kernel on ROCm |
 
 "Emulated" means compute is handled via dequantization to BF16 during matmul.
 Weights stay in their compressed format in VRAM, so quantized models still
 benefit from reduced memory. vLLM auto-converts between FP8 dialects
-(FNUZ/OCP) transparently.
+(FNUZ/OCP) transparently. NVFP4 models (e.g. `nvidia/*-NVFP4`) will not
+load on AMD GPUs -- use FP8 or MXFP4 alternatives instead.
 
 ### VRAM Estimation
 

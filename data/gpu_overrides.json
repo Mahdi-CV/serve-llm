@@ -18,8 +18,9 @@
       },
       "precision": {
         "native": ["bf16", "fp16", "fp8_ocp", "int8", "mxfp4", "mxfp6"],
-        "emulated": ["fp8_fnuz", "nvfp4"],
-        "notes": "MXFP4/MXFP6 are hardware-native on gfx950. FP8 uses OCP (E4M3FN) standard, not FNUZ. NVFP4 is NVIDIA-specific and always emulated (dequants to BF16, no VRAM savings)."
+        "emulated": ["fp8_fnuz"],
+        "unsupported": ["nvfp4"],
+        "notes": "MXFP4/MXFP6 are hardware-native on gfx950. FP8 uses OCP (E4M3FN) standard, not FNUZ. NVFP4 is NVIDIA-specific and will not load on ROCm."
       },
       "workarounds": []
     },
@@ -33,8 +34,9 @@
       },
       "precision": {
         "native": ["bf16", "fp16", "fp8_fnuz", "int8"],
-        "emulated": ["mxfp4", "mxfp6", "nvfp4"],
-        "notes": "FP8 uses FNUZ (E4M3FNUZ) dialect, not OCP. vLLM auto-converts OCP checkpoints. MXFP4/MXFP6/NVFP4 compute is emulated (dequant to BF16 during matmul), but weights stay compressed in VRAM. Models quantized to MXFP4 still benefit from reduced weight memory on gfx942."
+        "emulated": ["mxfp4", "mxfp6"],
+        "unsupported": ["nvfp4"],
+        "notes": "FP8 uses FNUZ (E4M3FNUZ) dialect, not OCP. vLLM auto-converts OCP checkpoints. MXFP4/MXFP6 compute is emulated (dequant to BF16 during matmul), but weights stay compressed in VRAM. NVFP4 is NVIDIA-specific and will not load on ROCm."
       },
       "workarounds": [
         {"id": "vllm-34641", "description": "FP4BMM=0 mandatory on gfx942 (MI300X crash bug)"}

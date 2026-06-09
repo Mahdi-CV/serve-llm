@@ -29,7 +29,8 @@ Get a vLLM endpoint running on AMD Instinct GPU hardware.
   at `huggingface.co/<model_id>`. A valid token without license acceptance will
   fail with an opaque "Engine core initialization failed" error.
 - For remote GPU: SSH key access configured (`ssh <user>@<host>` must work
-  without a password prompt)
+  without a password prompt). If only password access is available, set up
+  keys first: `ssh-copy-id <user>@<host>`
 
 ## Data files
 
@@ -144,18 +145,37 @@ compute is emulated (dequant to BF16 during matmul), but weights stay
 compressed in VRAM so quantized models still fit in less memory.
 On gfx950 (MI350X), MXFP4 is hardware-native.
 
-**VRAM estimation and TP sizing:** Use
-[hf-mem](https://github.com/alvarobartt/hf-mem) to estimate the model's
-memory footprint based on its actual weights:
+**VRAM estimation and fit check:** Before constructing the Docker command,
+check whether the model fits the available hardware. Use
+[hf-mem](https://github.com/alvarobartt/hf-mem) to estimate weight memory:
 ```bash
 uvx hf-mem --model-id <HF_ID> --json-output
 ```
-The output `total_memory` is in bytes. Convert to GB and compare against
-the per-GPU VRAM from detect.py. If the model fits on a single GPU, use
-TP=1. If not, divide by the per-GPU VRAM and round up to the next power
-of 2 (1, 2, 4, 8) for `--tensor-parallel-size`. Do not use
+The output `total_memory` is in bytes. Convert to GB. Do not use
 `--experimental` (crashes on some quantized models). If `uvx` is not
 available, fall back to `vram_minimum_gb` from the recipe.
+
+Compare the weight memory against per-GPU VRAM from detect.py:
+
+1. **Fits on one GPU** (weight memory < per-GPU VRAM): use TP=1.
+2. **Doesn't fit on one GPU but multiple GPUs available**: divide weight
+   memory by per-GPU VRAM, round up to the next power of 2 (1, 2, 4, 8)
+   for `--tensor-parallel-size`.
+3. **Doesn't fit, look for quantized alternatives**: check these sources
+   in order:
+   a. **Recipe variants**: the recipe may have `fp8` or `mxfp4` variants
+      with a different `model_id` that points to a quantized checkpoint.
+   b. **Same provider**: many providers release quantized versions alongside
+      the base model (e.g. `Qwen/Qwen3.5-122B-FP8` from Qwen). Search
+      HuggingFace for `<provider>/<model-name>` with FP8/GPTQ/AWQ suffixes.
+   c. **AMD quantized**: AMD's Quark team publishes quantized models under
+      the `amd/` org on HuggingFace (e.g. `amd/Kimi-K2-Instruct-w-mxfp4-a-fp8`).
+      Search for `amd/<model-name>` variants.
+   Run `uvx hf-mem` on the quantized model ID to verify it fits, then use
+   that model ID instead.
+4. **Still doesn't fit**: tell the user the model requires more VRAM than
+   available and suggest either a smaller model or multi-GPU hardware.
+   Do not attempt to launch.
 
 Docker command template:
 ```
@@ -171,7 +191,22 @@ docker run -d --name vllm-<model-slug> \
   --port <port>
 ```
 
-## Step 5: Launch and verify
+## Step 5: Confirm with the user
+
+Before launching, present a summary and ask the user to confirm:
+- **Model**: full HuggingFace ID (e.g. `Qwen/Qwen3.5-122B-Instruct`)
+- **Precision**: variant being used (e.g. BF16, FP8) and why
+- **Weight memory**: from hf-mem estimate
+- **GPU**: detected hardware and VRAM
+- **TP**: tensor parallelism degree (1, 2, 4, 8)
+- **Port**: which port the endpoint will be on
+
+If a quantized alternative was selected (Step 4 fit check), explain that
+the original model doesn't fit and which alternative is being used.
+
+Wait for the user's confirmation before proceeding.
+
+## Step 6: Launch and verify
 
 Before launching, check for port conflicts:
 ```bash
@@ -179,9 +214,7 @@ ss -tlnp 2>/dev/null | grep ':<port> '
 ```
 If a Docker container is on that port, stop it with `docker rm -f <name>`.
 
-Run the Docker command. Then poll health in a **single blocking command**
-with the Bash tool's `timeout` set to 600000 (10 minutes). Poll every
-60 seconds. The loop exits immediately if the container dies:
+Run the Docker command. Then poll health using this loop:
 
 ```bash
 while docker inspect --format='{{.State.Running}}' <container_name> 2>/dev/null | grep -q true; do
@@ -191,22 +224,26 @@ done
 echo "FAILED -- container exited"
 ```
 
-A 503 during loading is normal. Most cached models are ready within
-2-5 minutes. If the command times out (model still downloading or loading),
-check whether the container is still alive:
-```bash
-docker inspect --format='{{.State.Running}}' <container_name>
-docker stats <container_name> --no-stream
-```
-If the container is still running, tell the user the model is still loading
-(likely downloading weights) and provide them the manual health check:
-`curl -sf http://localhost:<port>/health`. Do not retry the poll loop
-automatically.
+A 503 during loading is normal. Choose the polling strategy based on
+model size (weight memory from hf-mem):
+
+- **Small models (< 100 GB weights)**: run the poll as a blocking command
+  with the Bash tool's `timeout` set to 600000 (10 minutes). Most cached
+  models are ready within 2-5 minutes.
+- **Large models (>= 100 GB weights)**: run the poll with the Bash tool's
+  `run_in_background` set to `true`. Use `TaskOutput` with `block: false`
+  to check progress. This avoids the 10-minute timeout cap -- the loop
+  runs until the container is healthy or dies.
+
+If a blocking poll times out and the container is still running, ask the
+user whether they want the agent to continue monitoring (switch to
+background polling) or check manually with:
+`curl -sf http://localhost:<port>/health`.
 
 After health returns 200, send a warmup request (triggers HIP kernel compilation,
 ~40-45 seconds on gfx942):
 ```bash
-curl -s http://localhost:8000/v1/chat/completions \
+curl -s http://localhost:<port>/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"<model_id>","messages":[{"role":"user","content":"say hi"}],"max_tokens":5}'
 ```
@@ -276,5 +313,5 @@ also works (ROCm maps it). Never set either to an empty string.
 
 ## Reference
 
-Full GPU architecture table, env var reference, flag details, and known quirks:
+Precision compatibility, VRAM estimation, Docker flags, and known quirks:
 [reference.md](reference.md)
