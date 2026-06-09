@@ -124,9 +124,7 @@ Build the Docker command by combining:
 7. **vLLM args**: combine the recipe's `model.base_args` +
    `hardware_overrides.amd.extra_args` + `features.tool_calling.args` +
    `features.reasoning.args`. Add `--enable-auto-tool-choice` if not present.
-   For multi-GPU, add `--tensor-parallel-size N`. To compute TP: divide
-   `vram_minimum_gb` from the recipe's default variant by the per-GPU VRAM
-   (e.g., 192 GB for MI300X). Round up to the next power of 2 (1, 2, 4, 8).
+   For multi-GPU, add `--tensor-parallel-size N` (see VRAM estimation below).
    For MoE models on multi-GPU, also add `--distributed-executor-backend mp`.
 8. **Port arg**: `--port <port>`
 
@@ -144,6 +142,20 @@ nvfp4). Check `gpu_configs.<gfx_version>.precision.native` in
 `bf16`, `fp16`, `fp8_fnuz`, and `int8` are hardware-native. MXFP4 and NVFP4
 are emulated via dequant to BF16 with no VRAM savings -- use the `default`
 or `fp8` variant instead. On gfx950 (MI350X), MXFP4 is hardware-native.
+
+**VRAM estimation and TP sizing:** Use
+[hf-mem](https://github.com/alvarobartt/hf-mem) to get an accurate VRAM
+estimate for the model at the target dtype:
+```bash
+uvx hf-mem --model-id <HF_ID> --dtype bfloat16
+# For FP8:
+uvx hf-mem --model-id <HF_ID> --dtype float8
+```
+Compare the output against the per-GPU VRAM from detect.py. If the model
+fits on a single GPU, use TP=1. If not, divide the estimated VRAM by the
+per-GPU VRAM and round up to the next power of 2 (1, 2, 4, 8) for the
+`--tensor-parallel-size` value. If `uvx` is not available, fall back to
+`vram_minimum_gb` from the recipe's default variant.
 
 Docker command template:
 ```

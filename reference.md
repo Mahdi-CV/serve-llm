@@ -3,11 +3,9 @@
 ## Table of Contents
 1. [GPU Architecture](#gpu-architecture)
 2. [Model Compatibility Matrix](#model-compatibility-matrix)
-3. [Single-GPU Model Guide](#single-gpu-model-guide)
-4. [Multi-GPU Requirements](#multi-gpu-requirements)
-5. [vLLM Flags](#vllm-flags)
-6. [Environment Variables](#environment-variables)
-7. [Known Quirks](#known-quirks)
+3. [vLLM Flags](#vllm-flags)
+4. [Environment Variables](#environment-variables)
+5. [Known Quirks](#known-quirks)
 
 ---
 
@@ -88,40 +86,6 @@ VRAM at FP16/BF16 unless noted.
 | Kimi-K2.5 | moonshotai/Kimi-K2.5 | MLA+MoE MM | 700 GB | 350 GB | 8 | ROCm 7.2.1+ required |
 | GLM-4.5 | zai-org/GLM-4.5 | MoE | 400 GB | 200 GB | 8 | Pin to rocm:v0.15.1 image |
 | InternVL3.5-8B | OpenGVLab/InternVL3_5-8B | MM | 18 GB | — | 1 | |
-
----
-
-## Single-GPU Model Guide
-
-### MI300X (192 GB)
-These fit at FP16 with KV cache headroom:
-Qwen3 up to 72B, Gemma 4 up to 31B, Llama 4 Scout (110 GB), GPT-OSS-20B,
-Qwen3-VL up to 32B, Qwen2.5-VL-72B, InternVL3.5-8B.
-
-### MI325X (256 GB)
-Same as MI300X, plus larger models that need > 192 GB.
-
-### MI350X / MI355X (288 GB)
-Additional models that fit single-GPU on MI350X/MI355X but not MI300X:
-- GPT-OSS-120B (247 GB)
-- MiniMax-M2.7 FP8 (~100 GB)
-
-VRAM estimate: `(params_billions × 2 GB) × 1.15 overhead` at FP16.
-
----
-
-## Multi-GPU Requirements
-
-| Model | Min GPUs | TP | Extra flags |
-|---|---|---|---|
-| Qwen3-235B-A22B | 4× MI300X | 4 | `--distributed-executor-backend mp` |
-| DeepSeek-R1/V3 | 8× MI300X | 8 | `--block-size 1`, `--distributed-executor-backend mp` |
-| Kimi-K2.5 | 8× MI300X | 8 | ROCm 7.2.1, `--block-size 1` |
-| GLM-4.5 | 8× MI300X | 8 | Pin to `vllm-openai-rocm:v0.15.1` |
-| GPT-OSS-120B | 2× MI300X | 2 | Or 1× MI350X at TP=1 |
-| MiniMax-M2.7 | 2× MI300X | 2 | Or 1× MI350X (FP8) |
-
-TP degree must divide evenly into the model's attention head count.
 
 ---
 
