@@ -35,18 +35,14 @@ rocminfo | grep "gfx"
 | FP8 (FNUZ) | Native | Emulated | MI300X uses E4M3FNUZ dialect |
 | FP8 (OCP) | Emulated | Native | MI350X uses E4M3FN (OCP standard) |
 | INT8 | Native | Native | |
-| MXFP4 | Emulated | Native | On gfx942: dequants to BF16, no VRAM savings |
-| MXFP6 | Emulated | Native | On gfx942: dequants to BF16, no VRAM savings |
-| NVFP4 | Emulated | Emulated | NVIDIA-specific, always dequants to BF16 on AMD |
+| MXFP4 | Emulated | Native | On gfx942: compute dequants to BF16, weights stay compressed |
+| MXFP6 | Emulated | Native | On gfx942: compute dequants to BF16, weights stay compressed |
+| NVFP4 | Emulated | Emulated | NVIDIA-specific, dequants to BF16 on AMD |
 
-"Emulated" means the format is handled via dequantization to BF16 at runtime.
-The model still loads and runs correctly but there are no VRAM savings compared
-to BF16. vLLM auto-converts between FP8 dialects (FNUZ/OCP) transparently.
-
-Recipe `nvfp4` variant VRAM numbers assume NVIDIA hardware with native FP4.
-On AMD, these variants use the same VRAM as the `default` (BF16) variant.
-Prefer `default` or `fp8` variants on gfx942. On gfx950, `mxfp4` variants
-(when available) will provide real VRAM savings.
+"Emulated" means compute is handled via dequantization to BF16 during matmul.
+Weights stay in their compressed format in VRAM, so quantized models still
+benefit from reduced memory. vLLM auto-converts between FP8 dialects
+(FNUZ/OCP) transparently.
 
 ---
 

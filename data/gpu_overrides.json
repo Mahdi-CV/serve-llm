@@ -34,7 +34,7 @@
       "precision": {
         "native": ["bf16", "fp16", "fp8_fnuz", "int8"],
         "emulated": ["mxfp4", "mxfp6", "nvfp4"],
-        "notes": "FP8 uses FNUZ (E4M3FNUZ) dialect, not OCP. vLLM auto-converts OCP checkpoints. MXFP4/MXFP6/NVFP4 are emulated via dequant to BF16 at runtime with no VRAM savings. Recipe nvfp4 variant VRAM numbers are incorrect for gfx942."
+        "notes": "FP8 uses FNUZ (E4M3FNUZ) dialect, not OCP. vLLM auto-converts OCP checkpoints. MXFP4/MXFP6/NVFP4 compute is emulated (dequant to BF16 during matmul), but weights stay compressed in VRAM. Models quantized to MXFP4 still benefit from reduced weight memory on gfx942."
       },
       "workarounds": [
         {"id": "vllm-34641", "description": "FP4BMM=0 mandatory on gfx942 (MI300X crash bug)"}

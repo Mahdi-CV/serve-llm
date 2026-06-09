@@ -140,8 +140,9 @@ there either, use a generic config with
 nvfp4). Check `gpu_configs.<gfx_version>.precision.native` in
 `gpu_overrides.json` before selecting a variant. On gfx942 (MI300X), only
 `bf16`, `fp16`, `fp8_fnuz`, and `int8` are hardware-native. MXFP4 and NVFP4
-are emulated via dequant to BF16 with no VRAM savings -- use the `default`
-or `fp8` variant instead. On gfx950 (MI350X), MXFP4 is hardware-native.
+compute is emulated (dequant to BF16 during matmul), but weights stay
+compressed in VRAM so quantized models still fit in less memory.
+On gfx950 (MI350X), MXFP4 is hardware-native.
 
 **VRAM estimation and TP sizing:** Use
 [hf-mem](https://github.com/alvarobartt/hf-mem) to estimate the model's
