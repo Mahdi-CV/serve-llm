@@ -167,29 +167,29 @@ ss -tlnp 2>/dev/null | grep ':<port> '
 ```
 If a Docker container is on that port, stop it with `docker rm -f <name>`.
 
-Run the Docker command. Then poll health in a **single command** -- do NOT
-poll in a loop across multiple tool calls (each call costs a turn). Poll
-every 60 seconds. Instead of a fixed timeout, check if the container is
-still running -- if it died, fail immediately; if it's still up, keep waiting.
+Run the Docker command. Then poll health in a **single blocking command**
+with the Bash tool's `timeout` set to 600000 (10 minutes). Poll every
+60 seconds. The loop exits immediately if the container dies:
 
 ```bash
 while docker inspect --format='{{.State.Running}}' <container_name> 2>/dev/null | grep -q true; do
-  curl -sf http://localhost:8000/health && echo "READY" && exit 0
+  curl -sf http://localhost:<port>/health && echo "READY" && exit 0
   sleep 60
 done
 echo "FAILED -- container exited"
 ```
 
-Set the Bash tool's `timeout` parameter to 600000 (10 minutes). If it times
-out, call the same command again -- it will resume polling. This avoids
-wasting turns on individual health checks.
-
-A 503 during loading is normal. Models downloading on slow connections can
-take much longer than cached models.
-
-If the model is not cached locally, the download happens inside the container's
-engine core process with no visible progress in `docker logs`. Check that the
-container is still working with `docker stats <name> --no-stream`.
+A 503 during loading is normal. Most cached models are ready within
+2-5 minutes. If the command times out (model still downloading or loading),
+check whether the container is still alive:
+```bash
+docker inspect --format='{{.State.Running}}' <container_name>
+docker stats <container_name> --no-stream
+```
+If the container is still running, tell the user the model is still loading
+(likely downloading weights) and provide them the manual health check:
+`curl -sf http://localhost:<port>/health`. Do not retry the poll loop
+automatically.
 
 After health returns 200, send a warmup request (triggers HIP kernel compilation,
 ~40-45 seconds on gfx942):
