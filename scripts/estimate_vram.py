@@ -185,8 +185,10 @@ def main():
         util = args.gpu_memory_utilization
         w_per_gpu = round(w_gb / tp, 1)
         usable = round(args.vram_gb * util, 1)
-        # Reserve ~1.5 GB for activations, CUDA/HIP graphs, internal buffers
-        overhead = 1.5
+        # Reserve for activations, HIP graph capture, internal buffers.
+        # vLLM profiles peak activation memory then captures HIP graphs;
+        # together these use ~4 GB beyond model weights on typical models.
+        overhead = 4.0
         remaining = round(max(0, usable - w_per_gpu - overhead), 1)
 
         fit = {

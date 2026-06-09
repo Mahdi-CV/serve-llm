@@ -159,15 +159,29 @@ This queries the HuggingFace Hub API (no model download) and returns JSON with:
   model's native max
 - `fit.min_tp_required` -- minimum TP needed (only if weights don't fit)
 
-Use the output to decide:
+**Understanding the overhead:** The script reserves ~4 GB for vLLM's runtime
+overhead (activation profiling, HIP graph capture, internal buffers). During
+startup, vLLM runs a profiling forward pass to measure peak activations, then
+captures HIP graphs for optimized decode. This startup peak is higher than
+steady-state. The `remaining_for_kv_gb` field reflects what's left after
+weights and this overhead.
 
-1. **`weights_fit: true`**: proceed. If `context_limited: true`, add
-   `--max-model-len <recommended_max_model_len>` to the vLLM args.
+Use `remaining_for_kv_gb` to decide:
+
+1. **`remaining_for_kv_gb >= 6`**: safe to run. If `context_limited: true`,
+   add `--max-model-len <recommended_max_model_len>` to the vLLM args.
    Mention the FP8 KV cache option (`--kv-cache-dtype fp8`) if the user
    needs longer context (`fit.max_seq_len_fp8_kv` shows the gain).
-2. **`weights_fit: false` with multiple GPUs**: re-run with
+2. **`remaining_for_kv_gb` between 2 and 6**: tight but worth trying. Launch
+   normally. If vLLM OOMs during HIP graph capture (check container logs for
+   "out of memory" after "capturing CUDA/HIP graphs"), retry with
+   `--enforce-eager` added to the vLLM args. This skips graph capture and
+   frees 1-2 GB. The only cost is slightly higher decode latency.
+3. **`remaining_for_kv_gb < 2`**: too tight. Will likely OOM during the
+   activation profiling step. Do not attempt.
+4. **`weights_fit: false` with multiple GPUs**: re-run with
    `--tp <min_tp_required>` and check again.
-3. **`weights_fit: false`, not enough GPUs**: look for quantized
+5. **`weights_fit: false`, not enough GPUs**: look for quantized
    alternatives in this order:
    a. **Recipe variants**: the recipe may have `fp8` or `mxfp4` variants
       with a different `model_id` that points to a quantized checkpoint.
@@ -179,7 +193,7 @@ Use the output to decide:
       Search for `amd/<model-name>` variants.
    Run `estimate_vram.py` on the quantized model ID to verify it fits,
    then use that model ID instead.
-4. **Still doesn't fit**: tell the user the model requires more VRAM than
+6. **Still doesn't fit**: tell the user the model requires more VRAM than
    available and suggest either a smaller model or multi-GPU hardware.
    Do not attempt to launch.
 
@@ -297,6 +311,12 @@ This is in the recipe args for these models.
 **MoE models on multi-GPU need `--distributed-executor-backend mp`** --
 Qwen3-235B, GLM-4.5, MiniMax-M2. The default distributed executor does not
 work reliably with MoE on ROCm.
+
+**OOM during HIP graph capture** -- If the container logs show "out of memory"
+after "capturing CUDA graphs" or "capturing HIP graphs", the model fits in
+VRAM but there isn't enough headroom for graph capture. Retry with
+`--enforce-eager` added to the vLLM args. This disables graph capture and
+frees 1-2 GB. Trade-off: slightly higher decode latency, but the model runs.
 
 **"Engine core initialization failed"** -- This opaque error means the engine
 core subprocess died. Check early container logs: `docker logs <name> 2>&1 |

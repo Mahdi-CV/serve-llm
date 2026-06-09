@@ -33,11 +33,13 @@ requirements from the HuggingFace Hub API (no model download):
 python3 scripts/estimate_vram.py --model-id <HF_ID> --vram-gb <per_gpu_vram>
 ```
 Returns JSON with `weight_memory_gb`, `kv_cache_bytes_per_token`,
-achievable context length, and fit status. Weight memory is derived from
-safetensors metadata (tested: GPT-OSS-120B reports 65 GB, vLLM logs show
-68.7 GB actual load on MI300X). KV cache per token is calculated from the
-model's `config.json` architecture parameters. MLA models (DeepSeek-R1/V3)
-are detected and use their compressed KV dimensions.
+achievable context length, and fit status. The script reserves ~4 GB for
+vLLM's runtime overhead (activation profiling, HIP graph capture, internal
+buffers). Weight memory is derived from safetensors metadata (tested:
+GPT-OSS-120B reports 65 GB, vLLM logs show 68.7 GB actual load on MI300X).
+KV cache per token is calculated from the model's `config.json` architecture
+parameters. MLA models (DeepSeek-R1/V3) are detected and use their compressed
+KV dimensions.
 
 ---
 

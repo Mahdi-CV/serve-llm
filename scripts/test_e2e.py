@@ -123,42 +123,27 @@ def _run(cmd, host=None, user=None, port=22, timeout=30):
 
 
 def detect_gpu(host, user, port):
-    rc, out, err = _run(
-        f"python3 {SCRIPT_DIR / 'detect.py'}" if not host else "amd-smi static --asic --vram --json",
-        host, user, port, timeout=30
-    )
-    if rc != 0 and host:
-        rc, out, err = _run("sudo amd-smi static --asic --vram --json", host, user, port, timeout=30)
+    """Run detect.py to get GPU info. Works for both local and remote."""
+    detect_script = SCRIPT_DIR / "detect.py"
+    if host:
+        target = f"{user}@{host}" if user else host
+        cmd = f"python3 {detect_script} --host {target}"
+    else:
+        cmd = f"python3 {detect_script}"
+
+    # detect.py runs locally and SSHes to remote internally
+    rc, out, err = _run(cmd, timeout=30)
     if rc != 0:
         return None
 
     try:
-        if host:
-            data = json.loads(out)
-            if isinstance(data, list):
-                gpu_list = data
-            elif isinstance(data, dict):
-                gpu_list = data.get("gpu_data", [data])
-            else:
-                gpu_list = [data]
-            if not gpu_list:
-                return None
-            asic = gpu_list[0].get("asic", {})
-            vram_info = gpu_list[0].get("vram", {})
-            vram_size = vram_info.get("size", {})
-            vram_mb = vram_size.get("value") if isinstance(vram_size, dict) else vram_size
-            return {
-                "gfx_version": asic.get("target_graphics_version", "unknown").lower(),
-                "vram_gb": round(vram_mb / 1024, 1) if vram_mb else 192,
-                "gpu_count": len(gpu_list),
-            }
-        else:
-            data = json.loads(out)
-            return {
-                "gfx_version": data.get("gfx_version", "unknown"),
-                "vram_gb": data["gpus"][0]["vram_gb"] if data.get("gpus") else 192,
-                "gpu_count": data.get("gpu_count", 1),
-            }
+        data = json.loads(out)
+        gpus = data.get("gpus", [])
+        return {
+            "gfx_version": data.get("gfx_version", "unknown"),
+            "vram_gb": gpus[0]["vram_gb"] if gpus else 192,
+            "gpu_count": data.get("gpu_count", 1),
+        }
     except (json.JSONDecodeError, KeyError, IndexError):
         return None
 
@@ -271,11 +256,20 @@ def run_test(model_id, docker_cmd, container_name, host, user, port, ssh_port, t
         result["reason"] = f"Docker launch failed: {err[:300]}"
         return result
 
-    # Poll health
+    # Poll health (check container is still running each iteration)
     print(f"  Waiting for /health (timeout: {timeout_min}min)...")
     deadline = time.time() + timeout_min * 60
     healthy = False
     while time.time() < deadline:
+        # Check container is still running
+        rc_chk, out_chk, _ = _run(
+            f"docker inspect --format='{{{{.State.Running}}}}' {container_name}",
+            host, user, ssh_port, timeout=10,
+        )
+        if rc_chk != 0 or "true" not in out_chk.lower():
+            print(f"  Container exited prematurely.")
+            break
+
         rc, out, _ = _run(f"curl -sf http://localhost:{port}/health", host, user, ssh_port, timeout=10)
         if rc == 0:
             healthy = True
@@ -346,7 +340,7 @@ def main():
         description="E2E test harness for serving-llms-on-instinct skill",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--models-file", required=True, help="File with one HF model ID per line")
+    parser.add_argument("--models-file", default="~/models_to_test.txt", help="File with one HF model ID per line")
     parser.add_argument("--host", default="", help="[user@]host for remote GPU server (default: local)")
     parser.add_argument("--port", type=int, default=8000, help="vLLM port (default: 8000)")
     parser.add_argument("--ssh-port", type=int, default=22, help="SSH port (default: 22)")
@@ -415,8 +409,25 @@ def main():
             counts["skip"] += 1
             continue
 
-        # Look up config
-        recipe_entry = recipes.get("models", {}).get(model_id)
+        # Look up config (try exact match, then strip date/version suffix)
+        models_db = recipes.get("models", {})
+        recipe_entry = models_db.get(model_id)
+        if not recipe_entry:
+            # Strip trailing date/version suffix: Kimi-K2-Instruct-0905 -> Kimi-K2-Instruct
+            base_id = re.sub(r"-\d{4,}$", "", model_id)
+            if base_id != model_id:
+                recipe_entry = models_db.get(base_id)
+            # Also try matching just the model name part
+            if not recipe_entry and "/" in model_id:
+                name_part = model_id.split("/", 1)[1]
+                base_name = re.sub(r"-\d{4,}$", "", name_part)
+                for key in models_db:
+                    if "/" in key:
+                        key_name = key.split("/", 1)[1]
+                        key_base = re.sub(r"-\d{4,}$", "", key_name)
+                        if key_base == base_name or key_name == name_part:
+                            recipe_entry = models_db[key]
+                            break
         source = "recipes" if recipe_entry else None
 
         if not source:

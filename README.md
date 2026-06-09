@@ -53,4 +53,5 @@ scripts/
   validate.py         # Environment validation with auto-fix
   sync_recipes.py     # Refresh recipes from GitHub + Docker Hub
   estimate_vram.py    # VRAM estimation (weights + KV cache)
+  test_e2e.py         # Overnight E2E test harness
 ```
