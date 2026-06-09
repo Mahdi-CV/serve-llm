@@ -144,18 +144,17 @@ are emulated via dequant to BF16 with no VRAM savings -- use the `default`
 or `fp8` variant instead. On gfx950 (MI350X), MXFP4 is hardware-native.
 
 **VRAM estimation and TP sizing:** Use
-[hf-mem](https://github.com/alvarobartt/hf-mem) to get an accurate VRAM
-estimate for the model at the target dtype:
+[hf-mem](https://github.com/alvarobartt/hf-mem) to estimate the model's
+memory footprint based on its actual weights:
 ```bash
-uvx hf-mem --model-id <HF_ID> --dtype bfloat16
-# For FP8:
-uvx hf-mem --model-id <HF_ID> --dtype float8
+uvx hf-mem --model-id <HF_ID> --json-output
 ```
-Compare the output against the per-GPU VRAM from detect.py. If the model
-fits on a single GPU, use TP=1. If not, divide the estimated VRAM by the
-per-GPU VRAM and round up to the next power of 2 (1, 2, 4, 8) for the
-`--tensor-parallel-size` value. If `uvx` is not available, fall back to
-`vram_minimum_gb` from the recipe's default variant.
+The output `total_memory` is in bytes. Convert to GB and compare against
+the per-GPU VRAM from detect.py. If the model fits on a single GPU, use
+TP=1. If not, divide by the per-GPU VRAM and round up to the next power
+of 2 (1, 2, 4, 8) for `--tensor-parallel-size`. Do not use
+`--experimental` (crashes on some quantized models). If `uvx` is not
+available, fall back to `vram_minimum_gb` from the recipe.
 
 Docker command template:
 ```
