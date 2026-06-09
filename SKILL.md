@@ -146,23 +146,29 @@ compressed in VRAM so quantized models still fit in less memory.
 On gfx950 (MI350X), MXFP4 is hardware-native.
 
 **VRAM estimation and fit check:** Before constructing the Docker command,
-check whether the model fits the available hardware. Use
-[hf-mem](https://github.com/alvarobartt/hf-mem) to estimate weight memory:
+estimate whether the model fits the available hardware:
 ```bash
-uvx hf-mem --model-id <HF_ID> --json-output
+python3 scripts/estimate_vram.py --model-id <HF_ID> --vram-gb <per_gpu_vram> --tp <N>
 ```
-The output `total_memory` is in bytes. Convert to GB. Do not use
-`--experimental` (crashes on some quantized models). If `uvx` is not
-available, fall back to `vram_minimum_gb` from the recipe.
+This queries the HuggingFace Hub API (no model download) and returns JSON with:
+- `weight_memory_gb` -- total weight size
+- `kv_cache_bytes_per_token` -- KV cache cost per token at BF16
+- `fit.weights_fit` -- whether weights fit at the given TP
+- `fit.recommended_max_model_len` -- max context the GPU can serve
+- `fit.context_limited` -- true if KV cache limits context below the
+  model's native max
+- `fit.min_tp_required` -- minimum TP needed (only if weights don't fit)
 
-Compare the weight memory against per-GPU VRAM from detect.py:
+Use the output to decide:
 
-1. **Fits on one GPU** (weight memory < per-GPU VRAM): use TP=1.
-2. **Doesn't fit on one GPU but multiple GPUs available**: divide weight
-   memory by per-GPU VRAM, round up to the next power of 2 (1, 2, 4, 8)
-   for `--tensor-parallel-size`.
-3. **Doesn't fit, look for quantized alternatives**: check these sources
-   in order:
+1. **`weights_fit: true`**: proceed. If `context_limited: true`, add
+   `--max-model-len <recommended_max_model_len>` to the vLLM args.
+   Mention the FP8 KV cache option (`--kv-cache-dtype fp8`) if the user
+   needs longer context (`fit.max_seq_len_fp8_kv` shows the gain).
+2. **`weights_fit: false` with multiple GPUs**: re-run with
+   `--tp <min_tp_required>` and check again.
+3. **`weights_fit: false`, not enough GPUs**: look for quantized
+   alternatives in this order:
    a. **Recipe variants**: the recipe may have `fp8` or `mxfp4` variants
       with a different `model_id` that points to a quantized checkpoint.
    b. **Same provider**: many providers release quantized versions alongside
@@ -171,8 +177,8 @@ Compare the weight memory against per-GPU VRAM from detect.py:
    c. **AMD quantized**: AMD's Quark team publishes quantized models under
       the `amd/` org on HuggingFace (e.g. `amd/Kimi-K2-Instruct-w-mxfp4-a-fp8`).
       Search for `amd/<model-name>` variants.
-   Run `uvx hf-mem` on the quantized model ID to verify it fits, then use
-   that model ID instead.
+   Run `estimate_vram.py` on the quantized model ID to verify it fits,
+   then use that model ID instead.
 4. **Still doesn't fit**: tell the user the model requires more VRAM than
    available and suggest either a smaller model or multi-GPU hardware.
    Do not attempt to launch.
@@ -196,9 +202,10 @@ docker run -d --name vllm-<model-slug> \
 Before launching, present a summary and ask the user to confirm:
 - **Model**: full HuggingFace ID (e.g. `Qwen/Qwen3.5-122B-Instruct`)
 - **Precision**: variant being used (e.g. BF16, FP8) and why
-- **Weight memory**: from hf-mem estimate
+- **Weight memory**: from estimate_vram.py
 - **GPU**: detected hardware and VRAM
 - **TP**: tensor parallelism degree (1, 2, 4, 8)
+- **Context**: max achievable context length (and whether it's limited)
 - **Port**: which port the endpoint will be on
 
 If a quantized alternative was selected (Step 4 fit check), explain that

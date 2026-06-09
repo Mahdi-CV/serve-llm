@@ -43,7 +43,7 @@ The skill handles the rest: detects GPUs, validates the environment, looks up mo
 
 ```
 SKILL.md              # Skill instructions (read by the agent)
-reference.md          # GPU architecture, env vars, flags, quirks
+reference.md          # Precision compatibility, Docker flags, quirks
 data/
   recipes_cache.json  # 98 models from vllm-project/recipes
   gpu_overrides.json  # GPU-specific configs and legacy models
@@ -52,4 +52,5 @@ scripts/
   detect.py           # GPU detection via amd-smi
   validate.py         # Environment validation with auto-fix
   sync_recipes.py     # Refresh recipes from GitHub + Docker Hub
+  estimate_vram.py    # VRAM estimation (weights + KV cache)
 ```

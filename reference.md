@@ -27,15 +27,17 @@ load on AMD GPUs -- use FP8 or MXFP4 alternatives instead.
 
 ### VRAM Estimation
 
-Use [hf-mem](https://github.com/alvarobartt/hf-mem) to get accurate weight
-memory for any model based on its actual safetensors metadata:
+Use `scripts/estimate_vram.py` to estimate weight memory and KV cache
+requirements from the HuggingFace Hub API (no model download):
 ```bash
-uvx hf-mem --model-id <HF_ID> --json-output
+python3 scripts/estimate_vram.py --model-id <HF_ID> --vram-gb <per_gpu_vram>
 ```
-The `total_memory` field (bytes) reflects the on-disk weight size, which
-closely matches in-GPU-memory usage (tested: GPT-OSS-120B reports 65 GB,
-vLLM logs show 68.7 GB actual load on MI300X). Compare against per-GPU
-VRAM from `scripts/detect.py` to determine tensor parallelism.
+Returns JSON with `weight_memory_gb`, `kv_cache_bytes_per_token`,
+achievable context length, and fit status. Weight memory is derived from
+safetensors metadata (tested: GPT-OSS-120B reports 65 GB, vLLM logs show
+68.7 GB actual load on MI300X). KV cache per token is calculated from the
+model's `config.json` architecture parameters. MLA models (DeepSeek-R1/V3)
+are detected and use their compressed KV dimensions.
 
 ---
 
