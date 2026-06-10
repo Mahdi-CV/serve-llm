@@ -54,15 +54,6 @@ PROMPT_TEMPLATE = (
     "verify it produces output. Do not remove the container when done."
 )
 
-SKIP_KEYWORDS = [
-    "skip", "cannot", "won't fit", "doesn't fit", "does not fit",
-    "not supported", "not an llm", "embedding", "reranker", "too large",
-    "insufficient", "nvfp4", "not available", "not compatible",
-    "encoder-decoder", "not a language model", "cannot be served",
-    "decline", "unable to serve", "won't work", "image generation",
-    "audio", "diffusion", "exceeds",
-]
-
 # Files that indicate the skill was actually used (not just present).
 SKILL_ARTIFACTS = [
     "SKILL.md", "reference.md",
@@ -303,25 +294,19 @@ def run_claude(prompt, cwd, max_turns, claude_model, timeout):
         }
 
 
-def classify_outcome(ground_truth, result_text, error):
-    """Classify the outcome of a run."""
+def classify_outcome(ground_truth, error):
+    """Classify the outcome of a run based on ground truth only."""
     if error == "timeout":
         return "timeout"
     if error == "claude CLI not found":
         return "error"
-
     if ground_truth["inference"]:
         return "served"
     if ground_truth["health"]:
         return "health_only"
     if ground_truth["container"]:
         return "container_stuck"
-
-    text_lower = result_text.lower()
-    if any(kw in text_lower for kw in SKIP_KEYWORDS):
-        return "correct_skip"
-
-    return "failed"
+    return "no_container"
 
 
 def run_single(model_id, index, with_skill, gpu_host, port, skill_dir,
@@ -361,7 +346,7 @@ def run_single(model_id, index, with_skill, gpu_host, port, skill_dir,
             if transcript_metrics.get("skill_triggered"):
                 log(f"  Skill triggered: {transcript_metrics['skill_files_read']}")
 
-    outcome = classify_outcome(ground_truth, run_result["result_text"], run_result["error"])
+    outcome = classify_outcome(ground_truth, run_result["error"])
     log(f"  Outcome: {outcome}")
 
     cleanup_containers(gpu_host, port)
@@ -394,9 +379,9 @@ def print_summary(results):
             continue
 
         served = sum(1 for r in mode_results if r["outcome"] == "served")
-        skipped = sum(1 for r in mode_results if r["outcome"] == "correct_skip")
-        failed = sum(1 for r in mode_results
-                     if r["outcome"] in ("failed", "container_stuck", "health_only"))
+        no_container = sum(1 for r in mode_results if r["outcome"] == "no_container")
+        stuck = sum(1 for r in mode_results
+                    if r["outcome"] in ("container_stuck", "health_only"))
         timed_out = sum(1 for r in mode_results if r["outcome"] == "timeout")
 
         turns_list = [r["turns"] for r in mode_results if r.get("turns")]
@@ -421,8 +406,8 @@ def print_summary(results):
         print(f"{'='*50}")
         print(f"  Total models:      {len(mode_results)}")
         print(f"  Served:            {served}")
-        print(f"  Correct skip:      {skipped}")
-        print(f"  Failed:            {failed}")
+        print(f"  No container:      {no_container}")
+        print(f"  Stuck/partial:     {stuck}")
         print(f"  Timeout:           {timed_out}")
         print(f"  Avg turns:         {avg_turns:.1f}")
         print(f"  Avg tool calls:    {avg_tools:.1f}")
