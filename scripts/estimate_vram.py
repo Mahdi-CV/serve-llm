@@ -55,31 +55,52 @@ def _fetch(url, token=None):
 
 
 def _weight_memory(model_id, revision, token):
-    """Get weight memory in bytes. Tries safetensors parameter counts first,
-    falls back to summing file sizes from tree API."""
-    # Primary: safetensors expansion in model info API
+    """Get weight memory in bytes.
+
+    Uses two signals and picks the more reliable one:
+      1. safetensors metadata (dtype x param count) from the model info API
+      2. raw .safetensors file sizes from the tree API
+
+    For standard BF16/FP16 checkpoints both agree.  For quantized models
+    (QAT, GPTQ, AWQ) the metadata reports packed INT32 containers while the
+    actual data is 4-bit, making (1) vastly overestimate.  File sizes are
+    always ground truth because safetensors is uncompressed, so when both
+    are available we take the smaller value.
+    """
+    metadata_bytes = 0
+    file_bytes = 0
+
+    # Signal 1: safetensors dtype x count from model info API
     url = f"{HF_BASE}/api/models/{model_id}?expand[]=safetensors"
     info, err = _fetch(url, token)
     if info:
         params = info.get("safetensors", {}).get("parameters", {})
         if params:
-            total = sum(
+            metadata_bytes = sum(
                 count * DTYPE_BYTES.get(dtype, 2)
                 for dtype, count in params.items()
             )
-            return total, "safetensors_metadata", None
 
-    # Fallback: file sizes from tree API
+    # Signal 2: raw file sizes from tree API
     tree_url = f"{HF_BASE}/api/models/{model_id}/tree/{revision}"
     entries, tree_err = _fetch(tree_url, token)
     if entries and isinstance(entries, list):
-        total = sum(
+        file_bytes = sum(
             e.get("size", 0) for e in entries
             if e.get("type") == "file"
             and e.get("path", "").endswith(".safetensors")
         )
-        if total > 0:
-            return total, "file_sizes", None
+
+    # Pick the best estimate
+    if metadata_bytes and file_bytes:
+        if file_bytes < metadata_bytes * 0.8:
+            # Large gap means quantized weights packed in wider containers.
+            return file_bytes, "file_sizes", None
+        return metadata_bytes, "safetensors_metadata", None
+    if metadata_bytes:
+        return metadata_bytes, "safetensors_metadata", None
+    if file_bytes:
+        return file_bytes, "file_sizes", None
 
     return 0, None, err or tree_err or "No safetensors files found"
 
