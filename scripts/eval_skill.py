@@ -69,7 +69,9 @@ def uninstall_skill():
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--models-file", default=os.path.expanduser("~/models_to_test.txt"))
+    p.add_argument("--models-file",
+                       default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                            "data", "models_to_test.txt"))
     p.add_argument("--gpu-host", default=None,
                        help="SSH target for remote GPU server. Omit to run locally.")
     p.add_argument("--skill-dir", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
