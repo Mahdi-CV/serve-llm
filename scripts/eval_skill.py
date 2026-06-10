@@ -29,8 +29,13 @@ from datetime import datetime
 PROMPT = (
     "Serve {model} for inference on {host}. "
     "The server has AMD Instinct GPUs. Expose the API on port {port}. "
+    "First, stop and remove any existing Docker containers on the server "
+    "to free up GPU memory. "
     "After the endpoint is healthy, send a test chat completion request to "
-    "verify it produces output. Do not remove the container when done."
+    "verify it produces output. Do not remove the container when done. "
+    "At the end, summarize what you did: which docker image you used, "
+    "the exact docker run command, whether the health check passed, "
+    "and whether inference produced output. Include any errors you hit."
 )
 
 SKILL_INSTALL_DIR = os.path.expanduser("~/.claude/skills/serving-llms-on-instinct")
