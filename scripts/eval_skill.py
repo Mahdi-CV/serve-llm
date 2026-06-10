@@ -77,7 +77,7 @@ def main():
     p.add_argument("--skill-dir", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--mode", choices=["with-skill", "without-skill"], required=True)
-    p.add_argument("--max-turns", type=int, default=30)
+    p.add_argument("--max-turns", type=int, default=50)
     p.add_argument("--timeout", type=int, default=1800)
     p.add_argument("--claude-model", default="claude-opus-4-8")
     p.add_argument("--out-dir", default=os.path.expanduser("~/eval_logs"))
