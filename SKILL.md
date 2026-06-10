@@ -252,14 +252,12 @@ model size (weight memory from hf-mem):
   with the Bash tool's `timeout` set to 600000 (10 minutes). Most cached
   models are ready within 2-5 minutes.
 - **Large models (>= 100 GB weights)**: run the poll with the Bash tool's
-  `run_in_background` set to `true`. Use `TaskOutput` with `block: false`
-  to check progress. This avoids the 10-minute timeout cap -- the loop
-  runs until the container is healthy or dies.
-
-If a blocking poll times out and the container is still running, ask the
-user whether they want the agent to continue monitoring (switch to
-background polling) or check manually with:
-`curl -sf http://localhost:<port>/health`.
+  `run_in_background` set to `true`. Then use `TaskOutput` with
+  `block: true` and `timeout: 600000` to wait up to 10 minutes per check.
+  If the task is still running after that, call `TaskOutput` again with
+  the same parameters. This uses only 1 turn per 10-minute wait instead
+  of burning a turn every check. The background loop runs until the
+  container is healthy or dies.
 
 After health returns 200, send a warmup request (triggers HIP kernel compilation,
 ~40-45 seconds on gfx942):
