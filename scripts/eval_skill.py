@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
 Eval the serving-llms-on-instinct skill: run claude -p for each model,
-save the JSON output. That's it.
+save the JSON output.
+
+Installs/uninstalls the skill via ~/.claude/skills/ so there's no
+ambiguity about whether it's active.
 
 Usage:
     python3 scripts/eval_skill.py \
@@ -17,6 +20,7 @@ Usage:
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -28,6 +32,21 @@ PROMPT = (
     "After the endpoint is healthy, send a test chat completion request to "
     "verify it produces output. Do not remove the container when done."
 )
+
+SKILL_INSTALL_DIR = os.path.expanduser("~/.claude/skills/serving-llms-on-instinct")
+
+
+def install_skill(skill_dir):
+    if os.path.exists(SKILL_INSTALL_DIR):
+        shutil.rmtree(SKILL_INSTALL_DIR)
+    shutil.copytree(skill_dir, SKILL_INSTALL_DIR)
+    print(f"Skill installed -> {SKILL_INSTALL_DIR}")
+
+
+def uninstall_skill():
+    if os.path.exists(SKILL_INSTALL_DIR):
+        shutil.rmtree(SKILL_INSTALL_DIR)
+        print("Skill uninstalled")
 
 
 def main():
@@ -49,13 +68,12 @@ def main():
         models = [l.strip() for l in f if l.strip() and not l.startswith("#")]
 
     if args.mode == "with-skill":
-        cwd = args.skill_dir
-        if not os.path.exists(os.path.join(cwd, "SKILL.md")):
-            print(f"SKILL.md not found in {cwd}", file=sys.stderr)
+        if not os.path.exists(os.path.join(args.skill_dir, "SKILL.md")):
+            print(f"SKILL.md not found in {args.skill_dir}", file=sys.stderr)
             sys.exit(1)
+        install_skill(args.skill_dir)
     else:
-        cwd = os.path.join(os.path.dirname(args.skill_dir), "eval-no-skill")
-        os.makedirs(cwd, exist_ok=True)
+        uninstall_skill()
 
     os.makedirs(args.out_dir, exist_ok=True)
     total = len(models) - args.start_from
@@ -78,8 +96,7 @@ def main():
 
         start = time.time()
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True,
-                               timeout=args.timeout, cwd=cwd)
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=args.timeout)
             elapsed = round(time.time() - start, 1)
             try:
                 output = json.loads(r.stdout) if r.stdout.strip() else {}
