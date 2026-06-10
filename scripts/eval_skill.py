@@ -123,6 +123,13 @@ def main():
                 output = json.loads(r.stdout) if r.stdout.strip() else {}
             except json.JSONDecodeError:
                 output = {"raw": r.stdout[:3000]}
+
+            if r.returncode != 0 and not output.get("result"):
+                stderr = r.stderr.strip() if r.stderr else ""
+                print(f"  FAILED (exit {r.returncode}): {stderr[:500]}", flush=True)
+                print(f"  Stopping. Resume with --start-from {i}", flush=True)
+                break
+
         except subprocess.TimeoutExpired:
             elapsed = round(time.time() - start, 1)
             output = {"error": "timeout"}
