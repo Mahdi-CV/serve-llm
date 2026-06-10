@@ -132,6 +132,12 @@ def main():
                 print(f"  Stopping. Resume with --start-from {i}", flush=True)
                 break
 
+            if output.get("api_error_status") == 429:
+                msg = output.get("result", "rate limited")
+                print(f"  RATE LIMITED: {msg}", flush=True)
+                print(f"  Stopping. Resume with --start-from {i}", flush=True)
+                break
+
         except subprocess.TimeoutExpired:
             elapsed = round(time.time() - start, 1)
             output = {"error": "timeout"}
