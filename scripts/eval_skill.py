@@ -26,10 +26,22 @@ import sys
 import time
 from datetime import datetime
 
-PROMPT = (
+PROMPT_REMOTE = (
     "Serve {model} for inference on {host}. "
     "The server has AMD Instinct GPUs. Expose the API on port {port}. "
     "First, stop and remove any existing Docker containers on the server "
+    "to free up GPU memory. "
+    "After the endpoint is healthy, send a test chat completion request to "
+    "verify it produces output. Do not remove the container when done. "
+    "At the end, summarize what you did: which docker image you used, "
+    "the exact docker run command, whether the health check passed, "
+    "and whether inference produced output. Include any errors you hit."
+)
+
+PROMPT_LOCAL = (
+    "Serve {model} for inference on this machine. "
+    "This server has AMD Instinct GPUs. Expose the API on port {port}. "
+    "First, stop and remove any existing Docker containers "
     "to free up GPU memory. "
     "After the endpoint is healthy, send a test chat completion request to "
     "verify it produces output. Do not remove the container when done. "
@@ -58,7 +70,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--models-file", default=os.path.expanduser("~/models_to_test.txt"))
-    p.add_argument("--gpu-host", required=True)
+    p.add_argument("--gpu-host", default=None,
+                       help="SSH target for remote GPU server. Omit to run locally.")
     p.add_argument("--skill-dir", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--mode", choices=["with-skill", "without-skill"], required=True)
@@ -90,7 +103,10 @@ def main():
         ts = datetime.now().strftime("%H:%M:%S")
         print(f"[{ts}] ({i+1-args.start_from}/{total}) {model}", flush=True)
 
-        prompt = PROMPT.format(model=model, host=args.gpu_host, port=args.port)
+        if args.gpu_host:
+            prompt = PROMPT_REMOTE.format(model=model, host=args.gpu_host, port=args.port)
+        else:
+            prompt = PROMPT_LOCAL.format(model=model, port=args.port)
         cmd = [
             "claude", "-p", prompt,
             "--output-format", "json",
