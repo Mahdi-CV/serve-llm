@@ -48,7 +48,8 @@ DEFAULT_CLAUDE_MODEL = "claude-opus-4-8"
 NO_SKILL_DIR_NAME = "eval-no-skill"
 
 PROMPT_TEMPLATE = (
-    "Serve {model_id} on {gpu_host} port {port} using vLLM with Docker. "
+    "Serve {model_id} for inference on {gpu_host}. "
+    "The server has AMD Instinct GPUs. Expose the API on port {port}. "
     "After the endpoint is healthy, send a test chat completion request to "
     "verify it produces output. Do not remove the container when done."
 )
