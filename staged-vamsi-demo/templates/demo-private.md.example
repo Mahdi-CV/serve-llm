@@ -1,0 +1,56 @@
+# PRIVATE - personal cheat sheet (do not show on camera)
+
+Active demo folder for <MODEL_SPOKEN>.
+
+## What is set up
+
+- A single general-purpose vLLM container `<CONTAINER>` runs as standing
+  infrastructure on the server. It is idle (sleep entrypoint, `--init`) and stays up.
+- Serving a model = launching `vllm serve` inside that container via `docker exec`.
+- The vLLM compile cache lives on the host disk at `<VLLM_CACHE>` and is mounted in,
+  so graphs survive process kills and container recreation.
+- Between takes we just kill the `vllm serve` process; the container stays up. The
+  next run relaunches the model from warm cache and shows the engine warmup.
+
+## The prompt to say on camera
+
+> run <MODEL_SPOKEN> on my Instinct server at <SERVER_IP> with vLLM and give me the endpoint
+
+## Flow (every take)
+
+1. Stage the box from the laptop:
+
+       cd ~/<DEMO_FOLDER> && ./stage.sh
+
+2. (optional) live server view in a second terminal:
+
+       ./watch.sh        # or: ssh <SSH_USER>@<SERVER_IP> then ./check_docker_log.sh
+
+3. Open Claude in this folder:
+
+       claude --dangerously-skip-permissions
+
+4. Say the prompt. Endpoint + table in roughly two minutes.
+
+5. Point the client at it:
+
+       ssh <SSH_USER>@<SERVER_IP>
+       ./set_hermes_custom_model.sh
+       hermes chat
+
+## Reset between takes
+
+Run `./stage.sh` again before the next take.
+
+## Timing
+
+- First-ever launch after the cache mount changed: ~240s (one-time, cache populate).
+- Warm relaunch after a process kill: ~90s + Claude orchestration. This is the demo path.
+
+## What is honest to say if asked
+
+- The weights are cached on the box (no download).
+- We keep a general-purpose vLLM serving container running; serving a model starts it
+  inside that container. The ~2 min is the engine warming up (weights into HBM,
+  replaying compiled graphs, allocating the KV cache).
+- A brand-new model from a cold box takes longer; we pre-stage to stay in budget.
