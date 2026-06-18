@@ -129,6 +129,21 @@ Build the Docker command by combining:
    For MoE models on multi-GPU, also add `--distributed-executor-backend mp`.
 8. **Port arg**: `--port <port>`
 
+**Apply model-specific overrides (final, highest precedence):** After merging
+env and args from all sources above, check
+`gpu_configs.<gfx_version>.model_overrides` in `gpu_overrides.json`. For each
+entry whose `match` value is a prefix of the model ID, apply it last so it wins
+over the recipe and GPU defaults:
+- `env_set`: set/replace these env vars in the merged env.
+- `args_remove`: remove these exact arg strings from the merged vLLM args (if
+  present).
+These exist because some recipe-recommended settings are numerically broken for
+a specific model on a specific gfx version (e.g. gpt-oss on gfx950 — see
+Gotchas). The recipe is regenerated from upstream by `sync_recipes.py` and will
+keep reintroducing the bad value, so the correction lives here and is reapplied
+on every run. Tell the user when an override changed the config and why
+(use the entry's `reason`).
+
 If the exact model ID is not in `recipes_cache.json`, check for a base model
 match by stripping date/version suffixes (e.g., `Kimi-K2-Instruct` matches
 `Kimi-K2-Instruct-0905`). Use the base model's recipe if found.
@@ -314,6 +329,16 @@ into Docker -- that also hides all GPUs inside the container.
 with a segfault or illegal instruction: `VLLM_ROCM_USE_AITER_FP4BMM` must be
 `0` on gfx942. This is set correctly in `gpu_overrides.json` for gfx942.
 See vLLM issue #34641.
+
+**AITER MoE kernels corrupt gpt-oss output on gfx950 (MI350X/MI355X)** -- With
+the default AITER MoE path active, `openai/gpt-oss-*` produces coherent
+reasoning but a corrupted final answer: word-salad, repetition loops, stray
+unicode junk -- at any temperature, on both 20b and 120b. The AITER attention
+backend is fine and stays on. Fix: `VLLM_ROCM_USE_AITER_MOE=0`. Note:
+`AITER_MHA=0` and `AITER_FUSED_MOE_A16W4=1` do NOT fix it -- the whole MoE
+AITER path must be disabled. Handled automatically by the `model_overrides`
+entry for `openai/gpt-oss` in `gpu_overrides.json` (gfx950), applied as the
+final, highest-precedence step in Step 4. Observed on ROCm 7.2 / vLLM 0.23.0.
 
 **`HIP error: no kernel image`** -- The Docker image has no compiled kernel
 for your GPU's gfx version. Use `vllm/vllm-openai-rocm:latest`; it includes
